@@ -209,6 +209,7 @@ const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  
   .dt-root {
     min-height: 100vh; background: #0d0e11; color: #e8eaf0;
     font-family: 'Syne', sans-serif;
