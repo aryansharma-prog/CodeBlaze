@@ -13,8 +13,11 @@ const aiRouter = require("./routes/aiChatting");
 const cors = require('cors');
 
 app.use(cors({
-    origin: 'http://localhost:5173',
-    credentials: true
+  origin: [
+    "http://localhost:5173",
+    "https://code-blaze-ips0grm0y-aryansharma-progs-projects.vercel.app"
+  ],
+  credentials: true
 }));
 
 app.use(express.json());
