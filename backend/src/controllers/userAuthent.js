@@ -16,7 +16,12 @@ const register = async (req,res)=>{
 
         const user =  await User.create(req.body);
         const token =  jwt.sign({_id:user._id , emailId:emailId},process.env.JWT_KEY,{expiresIn: 60*60});
-        res.cookie('token',token,{maxAge: 60*60*1000});
+        res.cookie("token", token, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    maxAge: 60 * 60 * 1000
+});
 
          const reply = {
             firstName:user.firstName,
@@ -24,59 +29,93 @@ const register = async (req,res)=>{
             _id:user._id
         }
         
-        res.status(201).res.status(200).json({
-            user:reply,
-            message:"Registered Successfully"
-        });
+       res.status(201).json({
+    user: reply,
+    message: "Registered Successfully"
+});
     }
     catch(err){
         res.status(400).send("Error: "+err);
     }
 }
 
-const login = async (req,res)=>{
+const login = async (req, res) => {
+    try {
+        const { emailId, password } = req.body;
 
-    try{
-        // const blocked = await redisClient.get(token);
+        console.log("========== LOGIN ATTEMPT ==========");
+        console.log("Request Body:", req.body);
 
-        // if(blocked){
-        //      throw new Error("Session expired. Please login again.");
-        // }
-        const {emailId, password} = req.body;
+        if (!emailId || !password) {
+            console.log("Missing emailId or password");
+            return res.status(400).json({
+                message: "Email and Password are required"
+            });
+        }
 
-        if(!emailId)
-            throw new Error("Invalid Credentials");
-        if(!password)
-            throw new Error("Invalid Credentials");
+        const user = await User.findOne({ emailId });
 
-        const user = await User.findOne({emailId});
-        if(!user) 
-            throw new error("Invalid User");
-        
-        const match = await bcrypt.compare(password,user.password);
+        console.log("User Found:", !!user);
 
-        if(!match)
-            throw new Error("Invalid Credentials");
+        if (!user) {
+            return res.status(401).json({
+                message: "Invalid User"
+            });
+        }
 
-        const token =  jwt.sign({_id:user._id , emailId:emailId},process.env.JWT_KEY,{expiresIn: 60*60});
-        res.cookie('token',token,{maxAge: 60*60*1000});
+        console.log("Stored Password Hash:", user.password);
+
+        const match = await bcrypt.compare(password, user.password);
+
+        console.log("Password Match:", match);
+
+        if (!match) {
+            return res.status(401).json({
+                message: "Invalid Credentials"
+            });
+        }
+
+        const token = jwt.sign(
+            {
+                _id: user._id,
+                emailId: user.emailId,
+                role: user.role
+            },
+            process.env.JWT_KEY,
+            { expiresIn: "1h" }
+        );
+
+        console.log("JWT Generated Successfully");
+
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+            maxAge: 60 * 60 * 1000
+        });
 
         const reply = {
-            firstName:user.firstName,
-            emailId:user.emailId,
-            _id:user._id
-        }
-        //frontend me jab user login karega toh usko user ko ux details bhej dia jaega
+            firstName: user.firstName,
+            emailId: user.emailId,
+            _id: user._id,
+            role: user.role
+        };
 
-        res.status(201).json({
-            user:reply,
-            message:"logged-in Successfully"
+        console.log("Login Successful for:", emailId);
+
+        return res.status(200).json({
+            user: reply,
+            message: "Logged in Successfully"
+        });
+
+    } catch (err) {
+        console.error("LOGIN ERROR:", err);
+
+        return res.status(500).json({
+            message: err.message || "Internal Server Error"
         });
     }
-    catch(err){
-        res.status(401).send("Error: "+err);
-    }
-}
+};
 // logOut feature
 const logout = async(req,res)=>{
 
