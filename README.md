@@ -1,336 +1,136 @@
+<div align="center">
 
-# 🚀 CodeBlaze
+# CodeBlaze
 
-CodeBlaze is an AI-powered coding platform designed to help developers learn, practice, and build applications efficiently. The platform combines coding challenges, AI-assisted problem solving, code execution, and video learning into a single integrated environment.
+**AI-Powered Cloud IDE, Algorithmic Problem Solving & Code Intelligence Platform**
 
-![CodeBlaze Banner](https://img.shields.io/badge/MERN-Full%20Stack-green)
-![License](https://img.shields.io/badge/License-MIT-blue)
-![Status](https://img.shields.io/badge/Status-Active-success)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-codeblaze.vercel.app-00f2fe?style=flat-square&logo=vercel&logoColor=white)](https://code-blaze-git-main-aryansharma-progs-projects.vercel.app)
+[![Tech Stack](https://img.shields.io/badge/Stack-MERN%20%2B%20Redis%20%2B%20Gemini-61DAFB?style=flat-square&logo=react&logoColor=black)](https://github.com/aryansharma-prog/CodeBlaze)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
----
-
-## 🌟 Features
-
-### 👨‍💻 Coding Practice
-- Solve coding problems across multiple difficulty levels.
-- Track submissions and performance.
-- View execution results and feedback.
-
-### 🤖 AI Coding Assistant
-- Ask coding-related questions.
-- Get AI-generated explanations and guidance.
-- Learn concepts interactively.
-
-### ⚡ Online Code Execution
-- Run code directly from the browser.
-- Supports multiple programming languages.
-- Instant compilation and execution feedback.
-
-### 🎥 Video Learning Integration
-- Access curated educational content.
-- Learn concepts alongside practical problem solving.
-
-### 🔐 Authentication & Authorization
-- Secure JWT-based authentication.
-- Role-based access control.
-- Protected routes and user sessions.
-
-### 📊 User Dashboard
-- Profile management.
-- Submission tracking.
-- Personalized coding experience.
+</div>
 
 ---
 
-# 🏗️ System Architecture
+## 📌 Overview
 
-```text
-┌─────────────┐
-│   Frontend  │
-│ React + Vite│
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│ Express API │
-│  Node.js    │
-└──────┬──────┘
-       │
- ┌─────┴─────┐
- ▼           ▼
-MongoDB    Redis
-(Database) (Caching /
-            Session &
-            Token Blacklist)
+**CodeBlaze** is a full-stack algorithmic coding and cloud development platform designed to streamline problem-solving, code prototyping, and AI-assisted debugging. The platform integrates the industry-standard **Monaco Editor**, a multi-tier backend with **Redis caching and token blacklisting**, and **Google Gemini AI** for real-time complexity analysis and code explanations.
 
-       │
-       ▼
- AI Services & Code Execution Engine
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client ["Frontend (Vercel)"]
+        UI[React 18 + Vite SPA]
+        Monaco[Monaco Code Editor]
+        Redux[Redux Toolkit Auth & State]
+    end
+
+    subgraph Gateway ["Backend API (Render)"]
+        Router[Express.js REST Gateway]
+        Auth[JWT & HTTP-Only Cookie Guard]
+        Limiter[Rate Limiter & CORS]
+    end
+
+    subgraph DataServices ["Data & Infrastructure Layers"]
+        Mongo[(MongoDB Atlas - Problems, Users, Submissions)]
+        Redis[(Redis Cloud - Sessions, Cache & Blacklist)]
+        Gemini[Google Gemini AI Engine]
+    end
+
+    UI -->|HTTP / REST + withCredentials| Router
+    Monaco -->|Code Execution & Submission| Router
+    Router --> Auth
+    Auth --> Limiter
+    Limiter --> Mongo
+    Limiter --> Redis
+    Router -->|Prompt & AST Context| Gemini
 ```
 
 ---
 
-# ⚙️ Tech Stack
+## ⚡ Key Engineering Features
 
-## Frontend
-
-- React.js
-- Vite
-- Redux Toolkit
-- React Router DOM
-- Axios
-- Tailwind CSS
-- Monaco Editor
-
-## Backend
-
-- Node.js
-- Express.js
-- JWT Authentication
-- Bcrypt
-- Redis
-- REST APIs
-
-## Database
-
-- MongoDB
-- Mongoose ODM
-
-## AI Integration
-
-- Generative AI APIs
-- Conversational Coding Assistant
-
-## Deployment
-
-- Frontend: Vercel
-- Backend: Render
-- Database: MongoDB Atlas
-- Cache Layer: Redis Cloud
+- 💻 **Interactive Monaco Editor**: Syntax highlighting, auto-completion, multi-file code sandboxing, and real-time execution feedback.
+- 🤖 **AI Code Intelligence**: Gemini-powered conversational assistant providing time/space complexity analysis, algorithmic hints, and syntax remediation.
+- 🚀 **High-Throughput Caching**: Redis-backed session verification, token blacklisting, and frequent problem dataset caching for sub-50ms query latency.
+- 🔐 **Hardened Authentication**: Strict HTTP-only cookie JWT strategy, bcrypt password hashing, and role-based access control.
+- 📊 **Submission Lifecycle**: Problem catalogs with test-case validation, submission history tracking, and user performance analytics.
 
 ---
 
-# 📂 Project Structure
+## 🛠️ Tech Stack
 
-```text
-CodeBlaze
-│
-├── frontend
-│   ├── src
-│   ├── components
-│   ├── pages
-│   ├── redux
-│   └── services
-│
-├── backend
-│   ├── config
-│   ├── controllers
-│   ├── middleware
-│   ├── models
-│   ├── routes
-│   ├── utils
-│   └── services
-│
-└── README.md
-```
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | React.js (Vite), Redux Toolkit, React Router DOM, Tailwind CSS, Monaco Editor, Axios |
+| **Backend** | Node.js, Express.js, RESTful APIs, JWT Auth, Bcrypt, CORS |
+| **Database & Cache** | MongoDB Atlas (Mongoose ODM), Redis (Upstash / Redis Cloud) |
+| **AI Integration** | Google Gemini Generative AI API |
+| **Deployment** | Frontend on **Vercel**, Backend on **Render**, Database on **MongoDB Atlas** |
 
 ---
 
-# 🔄 Workflow
+## 📡 API Reference
 
-## 1. User Authentication
+### Authentication & Users
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/user/register` | Register a new developer account | No |
+| `POST` | `/user/login` | Authenticate user & issue HTTP-only JWT cookie | No |
+| `POST` | `/user/logout` | Invalidate session & blacklist token in Redis | Yes |
+| `GET` | `/user/check` | Verify session state and return authenticated user | Yes |
+| `GET` | `/user/getProfile` | Retrieve user profile, submission history, and stats | Yes |
 
-```text
-User
-  │
-  ▼
-Register / Login
-  │
-  ▼
-JWT Generated
-  │
-  ▼
-Stored in HTTP-only Cookie
-  │
-  ▼
-Authenticated Requests
-```
+### Problems & Submissions
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/problem/all` | Fetch paginated problem catalog (cached in Redis) | No |
+| `GET` | `/problem/:id` | Fetch problem description, constraints & test cases | No |
+| `POST` | `/problem/create` | Admin endpoint to publish new challenge | Admin |
+| `POST` | `/submission/create` | Execute code against test suites and store result | Yes |
 
----
-
-## 2. Problem Solving Flow
-
-```text
-Select Problem
-      │
-      ▼
-Write Code
-      │
-      ▼
-Submit Solution
-      │
-      ▼
-Execute Code
-      │
-      ▼
-Store Result
-      │
-      ▼
-Display Feedback
-```
+### AI Coding Assistant
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/ai/chat` | Generate explanations, hints, or reviews for code snippet | Yes |
 
 ---
 
-## 3. AI Assistant Flow
+## 🚀 Local Development Setup
 
-```text
-User Query
-     │
-     ▼
-Backend API
-     │
-     ▼
-AI Service
-     │
-     ▼
-Generated Response
-     │
-     ▼
-Frontend Display
-```
+### 1. Prerequisites
+- Node.js >= 18.x
+- MongoDB Atlas cluster or local MongoDB instance
+- Redis instance (Local or Redis Cloud URI)
 
----
-
-# 🔐 Security Features
-
-- JWT Authentication
-- Password Hashing using Bcrypt
-- HTTP-only Cookies
-- CORS Protection
-- Role-based Authorization
-- Redis Token Blacklisting
-- Secure Environment Variables
-
----
-
-# 🚀 Installation
-
-## Clone Repository
-
-```bash
-git clone https://github.com/aryansharma-prog/CodeBlaze.git
-```
-
-## Frontend Setup
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## Backend Setup
+### 2. Backend Installation
 
 ```bash
 cd backend
 npm install
-npm start
+cp .env.example .env
+# Edit .env with your MongoDB, Redis, JWT, and Gemini credentials
+npm run dev
+```
+
+### 3. Frontend Installation
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+# Set VITE_BACKEND_URL=http://localhost:4000
+npm run dev
 ```
 
 ---
 
-# 🔑 Environment Variables
+## 👨‍💻 Author
 
-## Backend
-
-```env
-PORT=4000
-
-DB_CONNECT_STRING=
-
-JWT_KEY=
-
-REDIS_URL=
-
-AI_API_KEY=
-```
-
-## Frontend
-
-```env
-VITE_BACKEND_URL=
-```
-
----
-
-# 📡 API Modules
-
-### Authentication
-
-```text
-POST /user/register
-POST /user/login
-POST /user/logout
-GET  /user/check
-GET  /user/getProfile
-DELETE /user/deleteProfile
-```
-
-### Problems
-
-```text
-POST   /problem/create
-GET    /problem/all
-GET    /problem/:id
-PUT    /problem/:id
-DELETE /problem/:id
-```
-
-### Submission
-
-```text
-POST /submission/create
-GET  /submission/history
-```
-
-### AI Assistant
-
-```text
-POST /ai/chat
-```
-
-### Videos
-
-```text
-GET /video/all
-POST /video/create
-```
-
----
-
-# 🎯 Future Enhancements
-
-- Contest System
-- Leaderboards
-- Real-time Collaboration
-- AI Code Review
-- Interview Preparation Mode
-- Company-wise Problem Sets
-- Performance Analytics Dashboard
-
----
-
-# 👨‍💻 Author
-
-**Aryan Sharma**
-
-- GitHub: https://github.com/aryansharma-prog
-- Project: https://code-blaze-git-main-aryansharma-progs-projects.vercel.app
-
----
-
-# ⭐ Support
-
-If you find this project useful, consider giving it a star on GitHub.
-
-It helps motivate further development and improvements.
+**Aryan Sharma**  
+- Portfolio: [aryansharma.dev](https://portfolio-amber-rho-jwa3w6ztpg.vercel.app)  
+- GitHub: [@aryansharma-prog](https://github.com/aryansharma-prog)  
+- LinkedIn: [Aryan Sharma](https://linkedin.com/in/aryan-sharma-b9a4242a3)
