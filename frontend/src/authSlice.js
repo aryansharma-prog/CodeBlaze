@@ -1,30 +1,28 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import axiosClient from './utils/axiosClient'
+import axiosClient from './utils/axiosClient';
 
 export const registerUser = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
-      await axiosClient.post('/user/register', userData);
-      const { data } = await axiosClient.get('/user/check');
-      return data.user; // ← consistent, always has role
+      const { data } = await axiosClient.post('/user/register', userData);
+      return data.user;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      const msg = error.response?.data?.message || error.response?.data || error.message || 'Registration failed';
+      return rejectWithValue(msg);
     }
   }
 );
 
-// authSlice.js — loginUser thunk
 export const loginUser = createAsyncThunk(
   'auth/login',
-  async (credentials, { rejectWithValue, dispatch }) => {
+  async (credentials, { rejectWithValue }) => {
     try {
-      await axiosClient.post('/user/login', credentials);
-      // After login, fetch full profile including role via /check
-      const { data } = await axiosClient.get('/user/check');
-      return data.user; // ← this guaranteed has role
+      const { data } = await axiosClient.post('/user/login', credentials);
+      return data.user;
     } catch (error) {
-      return rejectWithValue(error);
+      const msg = error.response?.data?.message || error.response?.data || error.message || 'Login failed';
+      return rejectWithValue(msg);
     }
   }
 );
@@ -36,7 +34,8 @@ export const checkAuth = createAsyncThunk(
       const { data } = await axiosClient.get('/user/check');
       return data.user;
     } catch (error) {
-      return rejectWithValue(error);
+      const msg = error.response?.data?.message || error.response?.data || error.message || 'Authentication required';
+      return rejectWithValue(msg);
     }
   }
 );
@@ -48,7 +47,8 @@ export const logoutUser = createAsyncThunk(
       await axiosClient.post('/user/logout');
       return null;
     } catch (error) {
-      return rejectWithValue(error);
+      const msg = error.response?.data?.message || error.response?.data || error.message || 'Logout failed';
+      return rejectWithValue(msg);
     }
   }
 );
@@ -62,10 +62,13 @@ const authSlice = createSlice({
     error: null
   },
   reducers: {
+    clearAuthError: (state) => {
+      state.error = null;
+    }
   },
   extraReducers: (builder) => {
     builder
-      // Register User Cases
+      // Register
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -77,12 +80,12 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || 'Something went wrong';
+        state.error = typeof action.payload === 'string' ? action.payload : 'Registration failed';
         state.isAuthenticated = false;
         state.user = null;
       })
   
-      // Login User Cases
+      // Login
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -94,12 +97,12 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || 'Something went wrong';
+        state.error = typeof action.payload === 'string' ? action.payload : 'Invalid credentials';
         state.isAuthenticated = false;
         state.user = null;
       })
   
-      // Check Auth Cases
+      // Check Auth
       .addCase(checkAuth.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -111,12 +114,12 @@ const authSlice = createSlice({
       })
       .addCase(checkAuth.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || 'Something went wrong';
+        state.error = typeof action.payload === 'string' ? action.payload : null;
         state.isAuthenticated = false;
         state.user = null;
       })
   
-      // Logout User Cases
+      // Logout
       .addCase(logoutUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -129,11 +132,12 @@ const authSlice = createSlice({
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || 'Something went wrong';
+        state.error = typeof action.payload === 'string' ? action.payload : 'Logout failed';
         state.isAuthenticated = false;
         state.user = null;
       });
   }
 });
 
+export const { clearAuthError } = authSlice.actions;
 export default authSlice.reducer;

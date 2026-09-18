@@ -347,8 +347,11 @@ export default function Homepage() {
   /* ── Data fetching ── */
   useEffect(() => {
     axiosClient.get('/problem/getAllProblem')
-      .then((res) => setProblems(Array.isArray(res.data) ? res.data : []))
-      .catch((err) => console.error('[Homepage] problems:', err));
+      .then((res) => setProblems(Array.isArray(res.data) ? res.data.filter(Boolean) : []))
+      .catch((err) => {
+        console.error('[Homepage] problems:', err);
+        setProblems([]);
+      });
     if (user && totalSolved === 0 && !solvedLoading) dispatch(fetchSolvedProblems());
   }, [user]);
 
@@ -394,34 +397,39 @@ export default function Homepage() {
   const handleLogout = () => { dispatch(logoutUser()); dispatch(clearSolved()); };
 
   /* ── Derived data ── */
-  const rank = getRank(totalSolved);
-  const streak = getStreak(totalSolved);
-  const accuracy = problems.length ? Math.round((totalSolved / problems.length) * 100) : 0;
-  const heatmapCells = buildHeatmap(totalSolved);
+  const rank = getRank(totalSolved || 0);
+  const streak = getStreak(totalSolved || 0);
+  const accuracy = (problems && problems.length) ? Math.round(((totalSolved || 0) / problems.length) * 100) : 0;
+  const heatmapCells = buildHeatmap(totalSolved || 0);
   const heatmapCols = [];
   for (let i = 0; i < heatmapCells.length; i += 7) heatmapCols.push(heatmapCells.slice(i, i + 7));
 
+  const safeSolvedIds = Array.isArray(solvedIds) ? solvedIds : [];
+
   const difficultyStats = ['easy', 'medium', 'hard'].map((d) => ({
-    d, total: problems.filter(p => p.difficulty === d).length,
-    solved: problems.filter(p => p.difficulty === d && solvedIds.includes(String(p._id))).length,
+    d,
+    total: (problems || []).filter(p => p && p.difficulty === d).length,
+    solved: (problems || []).filter(p => p && p.difficulty === d && safeSolvedIds.includes(String(p._id))).length,
   }));
 
-  const filteredProblems = problems.filter((p) => {
-    const isSolved = solvedIds.includes(String(p._id));
+  const filteredProblems = (problems || []).filter((p) => {
+    if (!p) return false;
+    const isSolved = safeSolvedIds.includes(String(p._id));
     return (filters.difficulty === 'all' || p.difficulty === filters.difficulty)
       && (filters.tag === 'all' || p.tags === filters.tag)
       && (filters.status === 'all' || (filters.status === 'solved' ? isSolved : !isSolved));
   });
 
-  const totalPages = Math.ceil(filteredProblems.length / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filteredProblems.length / PAGE_SIZE));
   const pagedProblems = filteredProblems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const searchResults = searchQ.trim().length < 2 ? [] :
-    problems.filter(p => p.title.toLowerCase().includes(searchQ.toLowerCase())).slice(0, 8);
+    (problems || []).filter(p => p && p.title && p.title.toLowerCase().includes(searchQ.toLowerCase())).slice(0, 8);
 
   /* daily challenge: pick deterministically by day */
-  const todayIdx = new Date().getDate() % Math.max(problems.length, 1);
-  const dailyProblem = problems[todayIdx];
+  const dailyProblem = (problems && problems.length > 0)
+    ? problems[new Date().getDate() % problems.length]
+    : null;
 
   /* heat color */
   const heatColor = (intensity) => {
@@ -431,7 +439,7 @@ export default function Homepage() {
     return '#6c8ef7';
   };
 
-  const tags = [...new Set(problems.map(p => p.tags).filter(Boolean))];
+  const tags = [...new Set((problems || []).map(p => p && p.tags).filter(Boolean))];
 
   return (
     <div style={{ minHeight:'100vh', background:'var(--bg0)', color:'var(--text1)', fontFamily:'var(--font-display)' }}>
@@ -675,7 +683,7 @@ export default function Homepage() {
           {pagedProblems.length === 0
             ? <div className="hp-empty">No problems match your filters.</div>
             : pagedProblems.map((problem, idx) => {
-                const isSolved = solvedIds.includes(String(problem._id));
+                const isSolved = safeSolvedIds.includes(String(problem._id));
                 return (
                   <div key={problem._id} className={`hp-card ${isSolved ? 'solved' : ''} ${problem.difficulty}-hover`}
                     style={{ animationDelay: `${idx * 0.03}s` }}

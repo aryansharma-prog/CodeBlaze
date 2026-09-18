@@ -15,8 +15,8 @@ import AdminVideo from "./components/AdminVideo";
 
 /* ── Reusable admin guard ─────────────────────────────────────────────────── */
 const AdminRoute = ({ isAuthenticated, role, children }) => {
-  if (!isAuthenticated) return <Navigate to="/login" />;
-  if (role !== 'admin')  return <Navigate to="/" />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (role !== 'admin')  return <Navigate to="/" replace />;
   return children;
 };
 
@@ -30,25 +30,42 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <span className="loading loading-spinner loading-lg"></span>
+      <div style={{
+        minHeight: '100vh',
+        background: '#0a0b0e',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: "'Syne', -apple-system, sans-serif"
+      }}>
+        <div style={{
+          width: '36px',
+          height: '36px',
+          borderRadius: '50%',
+          border: '3px solid rgba(108, 142, 247, 0.2)',
+          borderTopColor: '#6c8ef7',
+          animation: 'app-spin 0.8s linear infinite'
+        }} />
+        <style>{`@keyframes app-spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
   return (
     <Routes>
-      {/* ── Public ── */}
-      <Route path="/"       element={isAuthenticated ? <Homepage />         : <Navigate to="/signup" />} />
-      <Route path="/login"  element={isAuthenticated ? <Navigate to="/" />  : <Login />} />
-      <Route path="/signup" element={isAuthenticated ? <Navigate to="/" />  : <Signup />} />
+      {/* ── Public / Auth ── */}
+      <Route path="/"       element={isAuthenticated ? <Homepage />         : <Navigate to="/login" replace />} />
+      <Route path="/login"  element={isAuthenticated ? <Navigate to="/" replace />  : <Login />} />
+      <Route path="/signup" element={isAuthenticated ? <Navigate to="/" replace />  : <Signup />} />
 
-      <Route path="/problem/:id" element={<ProblemSolve />} />
-      <Route path="/profile"     element={<UserDashboard />} />
+      {/* ── Protected / Core App ── */}
+      <Route path="/problem/:id" element={isAuthenticated ? <ProblemSolve /> : <Navigate to="/login" replace />} />
+      <Route path="/profile"     element={isAuthenticated ? <UserDashboard /> : <Navigate to="/login" replace />} />
       <Route path="/topics"      element={<DSATopics />} />
       <Route path="/topics/:slug" element={<DSATopic />} />
 
-      {/* ── Admin (all three routes protected) ── */}
+      {/* ── Admin (protected) ── */}
       <Route path="/admin" element={
         <AdminRoute isAuthenticated={isAuthenticated} role={user?.role}>
           <AdminPanel />
@@ -64,6 +81,9 @@ function App() {
           <AdminUpload />
         </AdminRoute>
       } />
+
+      {/* ── Catch-all fallback ── */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

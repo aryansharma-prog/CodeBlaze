@@ -13,8 +13,11 @@ export default function UserDashboard() {
 
   useEffect(() => {
     axiosClient.get('/problem/getAllProblem')
-      .then((r) => setAllProblems(Array.isArray(r.data) ? r.data : []))
-      .catch(console.error);
+      .then((r) => setAllProblems(Array.isArray(r.data) ? r.data.filter(Boolean) : []))
+      .catch((err) => {
+        console.error(err);
+        setAllProblems([]);
+      });
 
     // Fetch recent submissions across all problems
     // We'll derive activity from solvedProblems for now
@@ -22,24 +25,27 @@ export default function UserDashboard() {
   }, []);
 
   // Derived stats
-  const total    = allProblems.length;
-  const accuracy = total ? Math.round((totalSolved / total) * 100) : 0;
+  const safeProblems = Array.isArray(allProblems) ? allProblems : [];
+  const safeSolvedProblems = Array.isArray(solvedProblems) ? solvedProblems.filter(Boolean) : [];
+  const safeSolvedIds = Array.isArray(solvedIds) ? solvedIds : [];
+  const total    = safeProblems.length;
+  const accuracy = total ? Math.round(((totalSolved || 0) / total) * 100) : 0;
 
   const diffStats = ['easy', 'medium', 'hard'].map((d) => {
-    const t = allProblems.filter((p) => p.difficulty === d).length;
-    const s = allProblems.filter((p) => p.difficulty === d && solvedIds.includes(String(p._id))).length;
+    const t = safeProblems.filter((p) => p && p.difficulty === d).length;
+    const s = safeProblems.filter((p) => p && p.difficulty === d && safeSolvedIds.includes(String(p._id))).length;
     return { d, total: t, solved: s, pct: t ? Math.round((s / t) * 100) : 0 };
   });
 
   const tagStats = ['array', 'linkedList', 'graph', 'dp'].map((tag) => {
-    const t = allProblems.filter((p) => p.tags === tag).length;
-    const s = allProblems.filter((p) => p.tags === tag && solvedIds.includes(String(p._id))).length;
+    const t = safeProblems.filter((p) => p && p.tags === tag).length;
+    const s = safeProblems.filter((p) => p && p.tags === tag && safeSolvedIds.includes(String(p._id))).length;
     return { tag, total: t, solved: s };
   });
 
-  const joinDate = user?.createdAt
+  const joinDate = user?.createdAt && !isNaN(new Date(user.createdAt).getTime())
     ? new Date(user.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-    : 'N/A';
+    : 'Active Member';
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0b0f', color: '#e2e4ed', fontFamily: "'DM Sans', sans-serif" }}>
@@ -410,7 +416,7 @@ export default function UserDashboard() {
               <div className="ud-empty">No problems solved yet.<br/>Start solving!</div>
             ) : (
               <div className="ud-solved-list">
-                {solvedProblems.map((p) => (
+                {safeSolvedProblems.map((p) => (
                   <NavLink key={p._id} to={`/problem/${p._id}`} className="ud-solved-item">
                     <div className="ud-solved-item-left">
                       <span className="ud-check">

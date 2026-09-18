@@ -7,9 +7,9 @@ export const fetchSolvedProblems = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const { data } = await axiosClient.get('/problem/problemSolvedByUser');
-      return Array.isArray(data) ? data : [];
+      return Array.isArray(data) ? data.filter(Boolean) : [];
     } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
+      return rejectWithValue(err.response?.data?.message || err.response?.data || err.message);
     }
   }
 );
@@ -34,7 +34,8 @@ const solvedSlice = createSlice({
     // Call immediately after a successful submission — no need to refetch
     markSolved: (state, action) => {
       const problem = action.payload; // { _id, title, difficulty, tags }
-      const id      = String(problem._id);
+      if (!problem || !problem._id) return;
+      const id = String(problem._id);
       if (!state.ids.includes(id)) {
         state.problems.push(problem);
         state.ids.push(id);
@@ -50,13 +51,14 @@ const solvedSlice = createSlice({
       })
       .addCase(fetchSolvedProblems.fulfilled, (state, action) => {
         state.loading  = false;
-        state.problems = action.payload;
-        state.ids      = action.payload.map((p) => String(p._id));
-        state.total    = action.payload.length;
+        const valid    = (Array.isArray(action.payload) ? action.payload : []).filter(p => p && p._id);
+        state.problems = valid;
+        state.ids      = valid.map((p) => String(p._id));
+        state.total    = valid.length;
       })
       .addCase(fetchSolvedProblems.rejected, (state, action) => {
         state.loading = false;
-        state.error   = action.payload;
+        state.error   = typeof action.payload === 'string' ? action.payload : null;
       });
   },
 });
