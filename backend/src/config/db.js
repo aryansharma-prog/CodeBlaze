@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 
 async function main() {
-    console.log(process.env.DB_CONNECT_STRING);
+    if (!process.env.DB_CONNECT_STRING) {
+        throw new Error("DB_CONNECT_STRING environment variable is not defined");
+    }
     await mongoose.connect(process.env.DB_CONNECT_STRING);
     console.log("MongoDB Connected");
 }

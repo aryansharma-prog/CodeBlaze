@@ -11,11 +11,13 @@ const submitRouter = require("./routes/submit");
 const videoRouter = require("./routes/videoCreator");
 const aiRouter = require("./routes/aiChatting");
 const cors = require("cors");
+
 const allowedOrigins = [
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:4173",
     "http://localhost:3000",
+    "https://code-blaze-two.vercel.app",
     "https://code-blaze-git-main-aryansharma-progs-projects.vercel.app",
     "https://code-blaze.vercel.app",
     "https://codeblaze.vercel.app"
@@ -42,6 +44,20 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+// Root health check endpoint for Render & browser verification
+app.get('/', (req, res) => {
+    res.status(200).send("CodeBlaze Backend is running");
+});
+
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: "healthy",
+        service: "CodeBlaze Backend",
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+    });
+});
+
 app.use("/user", authRouter);
 app.use("/problem", problemRouter);
 app.use("/submission", submitRouter);
@@ -57,8 +73,9 @@ const initializeConnection = async () => {
 
         console.log("✅ MongoDB + Redis Connected");
 
-        app.listen(process.env.PORT || 4000, () => {
-            console.log(`🚀 Server running on port ${process.env.PORT || 4000}`);
+        const PORT = process.env.PORT || 4000;
+        app.listen(PORT, () => {
+            console.log(`🚀 Server running on port ${PORT}`);
         });
 
     } catch (err) {
