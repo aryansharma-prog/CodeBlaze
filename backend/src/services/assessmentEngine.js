@@ -13,7 +13,38 @@ class AssessmentEngine {
 
     const query = {};
     if (topic && topic !== 'all') {
-      query.topic = topic.toLowerCase();
+      const raw = topic.toLowerCase().trim();
+      const slug = raw.replace(/\s+/g, '-');
+      const space = raw.replace(/[-_]/g, ' ');
+      
+      const topicMatches = [raw, slug, space];
+      if (slug === 'dp' || slug === 'dynamic-programming' || raw === 'dynamic programming') {
+        topicMatches.push('dp', 'dynamic-programming', 'dynamic programming');
+      }
+      if (slug === 'sliding-window' || raw === 'sliding window') {
+        topicMatches.push('sliding-window', 'sliding window');
+      }
+      if (slug === 'two-pointers' || raw === 'two pointers') {
+        topicMatches.push('two-pointers', 'two pointers');
+      }
+      if (slug === 'binary-search' || raw === 'binary search') {
+        topicMatches.push('binary-search', 'binary search');
+      }
+      if (slug === 'linked-list' || raw === 'linked list') {
+        topicMatches.push('linked-list', 'linked list');
+      }
+      if (slug === 'bit-manipulation' || raw === 'bit manipulation') {
+        topicMatches.push('bit-manipulation', 'bit manipulation');
+      }
+      if (slug === 'union-find' || raw === 'union find') {
+        topicMatches.push('union-find', 'union find', 'dsu');
+      }
+
+      query.$or = [
+        { topic: { $in: topicMatches } },
+        { topic: new RegExp(`^${slug}`, 'i') },
+        { topic: new RegExp(`^${space}`, 'i') }
+      ];
     }
 
     // Fetch pool of candidate questions

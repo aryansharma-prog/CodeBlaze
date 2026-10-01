@@ -31,197 +31,271 @@ export default function ProgressPage() {
     }
   }, [isAuthenticated]);
 
-  // Build 52-week activity heatmap from real submission data
+  // Build 26-week activity heatmap from real submission data
   const renderHeatmap = () => {
     const activityMap = stats?.activityMap || {};
     const today = new Date();
     const cells = [];
 
-    // Last 26 weeks (182 days)
     for (let i = 181; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
       const count = activityMap[dateStr] || 0;
 
-      let color = 'bg-[#131620]';
-      if (count === 1) color = 'bg-emerald-900/60 border border-emerald-800';
-      else if (count === 2) color = 'bg-emerald-700/80 border border-emerald-600';
-      else if (count >= 3) color = 'bg-emerald-500 border border-emerald-400';
+      let bg = '#131620';
+      let border = '1px solid #1e2230';
+      if (count === 1) {
+        bg = 'rgba(16, 185, 129, 0.3)';
+        border = '1px solid rgba(16, 185, 129, 0.4)';
+      } else if (count === 2) {
+        bg = 'rgba(16, 185, 129, 0.6)';
+        border = '1px solid rgba(16, 185, 129, 0.7)';
+      } else if (count >= 3) {
+        bg = '#10b981';
+        border = '1px solid #34d399';
+      }
 
       cells.push(
         <div
           key={dateStr}
-          className={`w-3 h-3 rounded-[3px] ${color} transition-all hover:scale-125 cursor-pointer`}
+          style={{
+            width: '12px',
+            height: '12px',
+            borderRadius: '3px',
+            background: bg,
+            border,
+            cursor: 'pointer',
+            transition: 'transform 0.1s'
+          }}
           title={`${dateStr}: ${count} submission${count === 1 ? '' : 's'}`}
         />
       );
     }
 
     return (
-      <div className="flex flex-wrap gap-1.5 justify-start">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'flex-start' }}>
         {cells}
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0b0e] flex flex-col font-sans">
+    <div style={{ minHeight: '100vh', background: '#0a0b0e', color: '#e8eaf0', fontFamily: "'Syne', -apple-system, BlinkMacSystemFont, sans-serif", display: 'flex', flexDirection: 'column' }}>
       <Navbar />
 
-      <main className="max-w-6xl w-full mx-auto px-4 md:px-6 py-8 flex-1 flex flex-col space-y-6">
+      <main style={{ maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '32px 24px 64px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0e1017] border border-[#262b3d] rounded-2xl p-6 shadow-xl">
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+          background: '#131620',
+          border: '1px solid #1e2230',
+          borderRadius: '16px',
+          padding: '24px'
+        }}>
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+            <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#e8eaf0', letterSpacing: '-0.5px', margin: '0 0 4px' }}>
               Progress & Mastery Analytics
             </h1>
-            <p className="text-xs text-[#9aa0b8] mt-1">
-              Detailed tracking of your problem solving volume, submission accuracy, and topic strengths.
+            <p style={{ fontSize: '13px', color: '#7a8099', margin: 0 }}>
+              Detailed tracking of your problem-solving volume, submission accuracy, and topic strengths.
             </p>
           </div>
 
-          <NavLink to="/recommendations" className="btn-primary text-xs py-2 px-4">
-            <span>✨</span>
+          <NavLink
+            to="/recommendations"
+            style={{
+              padding: '10px 20px',
+              borderRadius: '8px',
+              background: '#6c8ef7',
+              color: '#fff',
+              fontSize: '13px',
+              fontWeight: 700,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 4px 16px rgba(108, 142, 247, 0.25)'
+            }}
+          >
+            <span>🎯</span>
             <span>Assess Weaknesses</span>
           </NavLink>
         </div>
 
         {loading ? (
-          <div className="py-20 text-center text-xs font-mono text-[#5e6480]">
-            <div className="w-6 h-6 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin-custom mx-auto mb-2"></div>
+          <div style={{ padding: '80px', textAlign: 'center', color: '#5e6480', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: '3px solid rgba(108, 142, 247, 0.2)',
+              borderTopColor: '#6c8ef7',
+              margin: '0 auto 16px',
+              animation: 'spin 0.8s linear infinite'
+            }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             Loading analytics...
           </div>
         ) : stats ? (
-          <div className="space-y-6 animate-fade-in">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Top Stat Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-[#0e1017] border border-[#262b3d] rounded-2xl p-5">
-                <div className="text-[10px] font-mono text-[#5e6480] uppercase">Problems Solved</div>
-                <div className="text-2xl font-bold text-white font-mono mt-1">
-                  {stats.solvedCount} <span className="text-xs font-normal text-[#5e6480]">/ {stats.totalProblems}</span>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '16px'
+            }}>
+              <div style={{ background: '#131620', border: '1px solid #1e2230', borderRadius: '14px', padding: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#555870', letterSpacing: '0.6px', fontFamily: "'JetBrains Mono', monospace" }}>
+                  Problems Solved
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: 800, color: '#e8eaf0', fontFamily: "'JetBrains Mono', monospace", marginTop: '6px' }}>
+                  {stats.solvedCount} <span style={{ fontSize: '13px', fontWeight: 400, color: '#5e6480' }}>/ {stats.totalProblems}</span>
                 </div>
               </div>
 
-              <div className="bg-[#0e1017] border border-[#262b3d] rounded-2xl p-5">
-                <div className="text-[10px] font-mono text-[#5e6480] uppercase">Acceptance Rate</div>
-                <div className="text-2xl font-bold text-emerald-400 font-mono mt-1">
+              <div style={{ background: '#131620', border: '1px solid #1e2230', borderRadius: '14px', padding: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#555870', letterSpacing: '0.6px', fontFamily: "'JetBrains Mono', monospace" }}>
+                  Acceptance Rate
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: 800, color: '#22c55e', fontFamily: "'JetBrains Mono', monospace", marginTop: '6px' }}>
                   {stats.acceptanceRate}%
                 </div>
               </div>
 
-              <div className="bg-[#0e1017] border border-[#262b3d] rounded-2xl p-5">
-                <div className="text-[10px] font-mono text-[#5e6480] uppercase">Active Streak</div>
-                <div className="text-2xl font-bold text-amber-400 font-mono mt-1 flex items-center gap-1">
+              <div style={{ background: '#131620', border: '1px solid #1e2230', borderRadius: '14px', padding: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#555870', letterSpacing: '0.6px', fontFamily: "'JetBrains Mono', monospace" }}>
+                  Active Streak
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: 800, color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace", marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>🔥</span>
                   <span>{stats.streak} days</span>
                 </div>
               </div>
 
-              <div className="bg-[#0e1017] border border-[#262b3d] rounded-2xl p-5">
-                <div className="text-[10px] font-mono text-[#5e6480] uppercase">Total Submissions</div>
-                <div className="text-2xl font-bold text-indigo-400 font-mono mt-1">
+              <div style={{ background: '#131620', border: '1px solid #1e2230', borderRadius: '14px', padding: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#555870', letterSpacing: '0.6px', fontFamily: "'JetBrains Mono', monospace" }}>
+                  Total Submissions
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: 800, color: '#6c8ef7', fontFamily: "'JetBrains Mono', monospace", marginTop: '6px' }}>
                   {stats.totalSubmissions}
                 </div>
               </div>
             </div>
 
             {/* Difficulty Breakdown & Heatmap Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
               {/* Difficulty Breakdown Card */}
-              <div className="bg-[#0e1017] border border-[#262b3d] rounded-2xl p-6 space-y-4">
-                <h2 className="text-sm font-bold text-white">Difficulty Breakdown</h2>
-                <div className="space-y-3 font-mono text-xs">
+              <div style={{ background: '#131620', border: '1px solid #1e2230', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 800, color: '#e8eaf0', margin: 0 }}>Difficulty Breakdown</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px' }}>
                   <div>
-                    <div className="flex justify-between text-[#9aa0b8] mb-1">
-                      <span className="text-emerald-400 font-bold">Easy</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9aa0b8', marginBottom: '6px' }}>
+                      <span style={{ color: '#22c55e', fontWeight: 700 }}>Easy</span>
                       <span>{stats.easySolved} Solved</span>
                     </div>
-                    <div className="w-full bg-[#131620] h-2 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, stats.easySolved * 15)}%` }}></div>
+                    <div style={{ width: '100%', background: '#0d0e14', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: '#22c55e', borderRadius: '4px', width: `${Math.min(100, Math.max(stats.easySolved > 0 ? 8 : 0, stats.easySolved * 15))}%` }} />
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-[#9aa0b8] mb-1">
-                      <span className="text-amber-400 font-bold">Medium</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9aa0b8', marginBottom: '6px' }}>
+                      <span style={{ color: '#f59e0b', fontWeight: 700 }}>Medium</span>
                       <span>{stats.mediumSolved} Solved</span>
                     </div>
-                    <div className="w-full bg-[#131620] h-2 rounded-full overflow-hidden">
-                      <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.min(100, stats.mediumSolved * 20)}%` }}></div>
+                    <div style={{ width: '100%', background: '#0d0e14', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: '#f59e0b', borderRadius: '4px', width: `${Math.min(100, Math.max(stats.mediumSolved > 0 ? 8 : 0, stats.mediumSolved * 20))}%` }} />
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-[#9aa0b8] mb-1">
-                      <span className="text-red-400 font-bold">Hard</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9aa0b8', marginBottom: '6px' }}>
+                      <span style={{ color: '#ef4444', fontWeight: 700 }}>Hard</span>
                       <span>{stats.hardSolved} Solved</span>
                     </div>
-                    <div className="w-full bg-[#131620] h-2 rounded-full overflow-hidden">
-                      <div className="h-full bg-red-500 rounded-full" style={{ width: `${Math.min(100, stats.hardSolved * 30)}%` }}></div>
+                    <div style={{ width: '100%', background: '#0d0e14', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: '#ef4444', borderRadius: '4px', width: `${Math.min(100, Math.max(stats.hardSolved > 0 ? 8 : 0, stats.hardSolved * 30))}%` }} />
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Submission Heatmap Card */}
-              <div className="md:col-span-2 bg-[#0e1017] border border-[#262b3d] rounded-2xl p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-bold text-white">Submission Activity Heatmap</h2>
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#5e6480]">
+              <div style={{ background: '#131620', border: '1px solid #1e2230', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h2 style={{ fontSize: '16px', fontWeight: 800, color: '#e8eaf0', margin: 0 }}>Submission Activity Heatmap</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: '#5e6480' }}>
                     <span>Less</span>
-                    <div className="w-2.5 h-2.5 rounded-[2px] bg-[#131620]"></div>
-                    <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-800"></div>
-                    <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-600"></div>
-                    <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-400"></div>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#131620', border: '1px solid #1e2230' }} />
+                    <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'rgba(16, 185, 129, 0.3)' }} />
+                    <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'rgba(16, 185, 129, 0.6)' }} />
+                    <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#10b981' }} />
                     <span>More</span>
                   </div>
                 </div>
-                <div className="overflow-x-auto py-2">
+                <div style={{ overflowX: 'auto', padding: '8px 0' }}>
                   {renderHeatmap()}
                 </div>
               </div>
             </div>
 
             {/* Topic Mastery Grid */}
-            <div className="bg-[#0e1017] border border-[#262b3d] rounded-2xl p-6 space-y-5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-white">Topic Performance Mastery</h2>
-                <span className="text-xs text-[#5e6480] font-mono">Calculated from assessments & solved problems</span>
+            <div style={{ background: '#131620', border: '1px solid #1e2230', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 800, color: '#e8eaf0', margin: 0 }}>Topic Performance Mastery</h2>
+                <span style={{ fontSize: '11px', color: '#5e6480', fontFamily: "'JetBrains Mono', monospace" }}>
+                  Calculated from diagnostic assessments & solved problems
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 font-mono text-xs">
-                {stats.topicStats?.map((t, idx) => (
-                  <div key={idx} className="bg-[#131620] border border-[#1c202e] rounded-xl p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-white text-xs">{t.name}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold ${
-                        t.score >= 80 ? 'text-emerald-400 bg-emerald-500/10' : t.score >= 60 ? 'text-indigo-400 bg-indigo-500/10' : t.score >= 40 ? 'text-amber-400 bg-amber-500/10' : 'text-red-400 bg-red-500/10'
-                      }`}>
-                        {t.score}%
-                      </span>
-                    </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                gap: '14px',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '12px'
+              }}>
+                {stats.topicStats?.map((t, idx) => {
+                  const score = t.score || 0;
+                  const color = score >= 80 ? '#22c55e' : score >= 60 ? '#6c8ef7' : score >= 40 ? '#f59e0b' : '#ef4444';
+                  return (
+                    <div key={idx} style={{ background: '#0d0e14', border: '1px solid #1e2230', borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 700, color: '#e8eaf0', fontSize: '12px' }}>{t.name}</span>
+                        <span style={{
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontWeight: 700,
+                          color,
+                          background: `${color}15`,
+                          border: `1px solid ${color}30`
+                        }}>
+                          {score}%
+                        </span>
+                      </div>
 
-                    <div className="w-full bg-[#1a1e2b] h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${
-                          t.score >= 80 ? 'bg-emerald-500' : t.score >= 60 ? 'bg-indigo-500' : t.score >= 40 ? 'bg-amber-500' : 'bg-red-500'
-                        }`}
-                        style={{ width: `${Math.max(5, t.score)}%` }}
-                      />
-                    </div>
+                      <div style={{ width: '100%', background: '#181b26', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: color, width: `${Math.max(5, score)}%` }} />
+                      </div>
 
-                    <div className="text-[10px] text-[#5e6480] flex justify-between">
-                      <span>{t.solvedCount} solved</span>
-                      <span className="capitalize">{t.status.replace('-', ' ')}</span>
+                      <div style={{ fontSize: '10.5px', color: '#5e6480', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{t.solvedCount} solved</span>
+                        <span style={{ textTransform: 'capitalize' }}>{t.status.replace('-', ' ')}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
         ) : (
-          <div className="py-20 text-center text-xs text-[#5e6480] font-mono">
+          <div style={{ padding: '80px', textAlign: 'center', fontSize: '13px', color: '#5e6480', fontFamily: "'JetBrains Mono', monospace" }}>
             Please sign in to view your progress analytics.
           </div>
         )}

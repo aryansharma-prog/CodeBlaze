@@ -1,14 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router';
+import { NavLink, useNavigate, useSearchParams } from 'react-router';
 import { useSelector } from 'react-redux';
 import axiosClient from '../utils/axiosClient';
 import Navbar from '../components/Navbar';
 
+const ALL_TOPICS = [
+  { id: 'arrays', label: 'Arrays', icon: '📊' },
+  { id: 'strings', label: 'Strings', icon: '🔤' },
+  { id: 'hashing', label: 'Hashing', icon: '🗝️' },
+  { id: 'two-pointers', label: 'Two Pointers', icon: '👉👈' },
+  { id: 'sliding-window', label: 'Sliding Window', icon: '🪟' },
+  { id: 'stack', label: 'Stack', icon: '🥞' },
+  { id: 'queue', label: 'Queue & Deque', icon: '🚶' },
+  { id: 'linked-list', label: 'Linked List', icon: '🔗' },
+  { id: 'binary-search', label: 'Binary Search', icon: '🔍' },
+  { id: 'recursion', label: 'Recursion', icon: '🌀' },
+  { id: 'backtracking', label: 'Backtracking', icon: '🌲' },
+  { id: 'trees', label: 'Binary Trees', icon: '🌳' },
+  { id: 'bst', label: 'BST', icon: '⚖️' },
+  { id: 'heap', label: 'Heap / Priority Queue', icon: '🏔️' },
+  { id: 'greedy', label: 'Greedy Algorithms', icon: '🎯' },
+  { id: 'graphs', label: 'Graphs', icon: '🕸️' },
+  { id: 'dp', label: 'Dynamic Programming', icon: '⚡' },
+  { id: 'bit-manipulation', label: 'Bit Manipulation', icon: '0️⃣1️⃣' },
+  { id: 'trie', label: 'Trie (Prefix Tree)', icon: '🔤' },
+  { id: 'union-find', label: 'Union Find (DSU)', icon: '🧩' }
+];
+
 export default function RecommendationsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
 
-  // Assessment flow states: 'overview' | 'testing' | 'completed'
+  // URL Topic Parameter (e.g. ?topic=Sliding%20Window or ?topic=graphs)
+  const queryTopicParam = searchParams.get('topic') || '';
+
+  // View States: 'overview' | 'testing' | 'completed'
   const [viewState, setViewState] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [recommendationsData, setRecommendationsData] = useState(null);
@@ -19,23 +46,29 @@ export default function RecommendationsPage() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(10);
   const [selectedOption, setSelectedOption] = useState(null);
-  const [answerFeedback, setAnswerFeedback] = useState(null); // { isCorrect, explanation }
+  const [answerFeedback, setAnswerFeedback] = useState(null);
   const [timeSpent, setTimeSpent] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
+  const [activeTestMode, setActiveTestMode] = useState('standard');
+  const [activeTestTopic, setActiveTestTopic] = useState('');
 
   // Topic test modal
-  const [topicTestModalOpen, setTopicTestModalOpen] = useState(false);
-  const [selectedTopicTest, setSelectedTopicTest] = useState('arrays');
+  const [topicModalOpen, setTopicModalOpen] = useState(false);
 
-  // Load existing recommendations & history
+  // Completed assessment summary
+  const [completedReport, setCompletedReport] = useState(null);
+
+  // Load existing recommendations & skill diagnostics
   const loadRecommendations = async () => {
     setLoading(true);
     try {
-      const { data } = await axiosClient.get('/recommendations/recommendations');
-      if (data && data.data) {
-        setRecommendationsData(data.data);
+      const res = await axiosClient.get('/assessment/recommendations');
+      if (res.data?.success && res.data.data) {
+        setRecommendationsData(res.data.data);
+      } else if (res.data) {
+        setRecommendationsData(res.data);
       }
     } catch (e) {
       console.error('Failed to load recommendations:', e);
@@ -52,7 +85,7 @@ export default function RecommendationsPage() {
     }
   }, [isAuthenticated]);
 
-  // Timer tick during active test
+  // Timer tick during active test session
   useEffect(() => {
     let interval = null;
     if (viewState === 'testing' && !answerFeedback) {
@@ -64,20 +97,27 @@ export default function RecommendationsPage() {
   }, [viewState, answerFeedback]);
 
   // Start Assessment Session
-  const handleStartAssessment = async (mode = 'standard', topic = '') => {
+  const handleStartAssessment = async (mode = 'standard', topicName = '') => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
     setLoading(true);
-    setTopicTestModalOpen(false);
+    setTopicModalOpen(false);
+    setActiveTestMode(mode);
+    setActiveTestTopic(topicName);
+
     try {
-      const { data } = await axiosClient.post('/assessment/start', { mode, topic });
-      if (data && data.success) {
-        setAssessmentId(data.assessmentId);
-        setCurrentQuestion(data.question);
+      const res = await axiosClient.post('/assessment/start', {
+        mode,
+        topic: topicName ? topicName.toLowerCase() : ''
+      });
+
+      if (res.data && res.data.success) {
+        setAssessmentId(res.data.assessmentId);
+        setCurrentQuestion(res.data.question);
         setQuestionIndex(0);
-        setTotalQuestions(data.totalQuestions);
+        setTotalQuestions(res.data.totalQuestions || (mode === 'quick' ? 5 : mode === 'deep' ? 20 : 10));
         setSelectedOption(null);
         setAnswerFeedback(null);
         setTimeSpent(0);
@@ -95,25 +135,24 @@ export default function RecommendationsPage() {
 
   // Submit Answer for Current Question
   const handleSubmitAnswer = async () => {
-    if (!selectedOption || submittingAnswer) return;
+    if (!selectedOption || submittingAnswer || !assessmentId) return;
     setSubmittingAnswer(true);
 
     try {
-      const { data } = await axiosClient.post('/assessment/submit-answer', {
-        assessmentId,
+      const res = await axiosClient.post(`/assessment/${assessmentId}/answer`, {
         questionId: currentQuestion._id,
         userAnswer: selectedOption,
         timeSpent,
-        hintsUsed
+        hintsUsed: showHint ? 1 : 0
       });
 
-      if (data && data.success) {
+      if (res.data && res.data.success) {
         setAnswerFeedback({
-          isCorrect: data.isCorrect,
-          correctOption: data.correctOption,
-          explanation: data.explanation,
-          isCompleted: data.isCompleted,
-          nextQuestion: data.nextQuestion
+          isCorrect: res.data.isCorrect,
+          correctOption: res.data.correctOption,
+          explanation: res.data.explanation,
+          isCompleted: res.data.isCompleted,
+          nextQuestion: res.data.nextQuestion
         });
       }
     } catch (err) {
@@ -123,418 +162,738 @@ export default function RecommendationsPage() {
     }
   };
 
-  // Move to Next Adaptive Question or Finish
-  const handleProceedNext = async () => {
-    if (answerFeedback?.isCompleted) {
-      // Finalize assessment
+  // Proceed to Next Question or Complete Test
+  const handleNextQuestion = async () => {
+    if (!answerFeedback) return;
+
+    if (answerFeedback.isCompleted || !answerFeedback.nextQuestion) {
       setLoading(true);
       try {
-        const { data } = await axiosClient.post('/assessment/complete', { assessmentId });
-        if (data && data.data) {
-          setRecommendationsData(data.data);
-          setViewState('completed');
-        }
+        const res = await axiosClient.post(`/assessment/${assessmentId}/complete`, {});
+        const finalData = res.data?.data || res.data;
+        setCompletedReport(finalData);
+        setViewState('completed');
+        loadRecommendations();
       } catch (err) {
         console.error('Complete assessment error:', err);
+        setViewState('overview');
       } finally {
         setLoading(false);
       }
-    } else if (answerFeedback?.nextQuestion) {
+    } else {
       setCurrentQuestion(answerFeedback.nextQuestion);
       setQuestionIndex((prev) => prev + 1);
       setSelectedOption(null);
       setAnswerFeedback(null);
-      setTimeSpent(0);
-      setHintsUsed(0);
       setShowHint(false);
+      setTimeSpent(0);
     }
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'strong':
-        return <span className="badge-strong px-2.5 py-0.5 rounded text-xs font-mono font-bold">Strong (80-100)</span>;
-      case 'good':
-        return <span className="badge-good px-2.5 py-0.5 rounded text-xs font-mono font-bold">Good (60-79)</span>;
-      case 'needs-practice':
-        return <span className="badge-needs-practice px-2.5 py-0.5 rounded text-xs font-mono font-bold">Needs Practice (40-59)</span>;
-      default:
-        return <span className="badge-weak px-2.5 py-0.5 rounded text-xs font-mono font-bold">Weak (0-39)</span>;
-    }
+  const getScoreColor = (score) => {
+    if (score >= 80) return '#22c55e';
+    if (score >= 60) return '#6c8ef7';
+    if (score >= 40) return '#f59e0b';
+    return '#ef4444';
   };
+
+  const getScoreLabel = (score) => {
+    if (score >= 80) return 'Strong (80–100%)';
+    if (score >= 60) return 'Good (60–79%)';
+    if (score >= 40) return 'Needs Practice (40–59%)';
+    return 'Weak (0–39%)';
+  };
+
+  const formatTimer = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  // Flatten recommended problems from roadmap
+  const topicList = recommendationsData?.topicBreakdown || recommendationsData?.topicPerformance || [];
+  const roadmaps = recommendationsData?.recommendations || [];
+  const aiCoach = recommendationsData?.aiAnalysis || null;
 
   return (
-    <div className="min-h-screen bg-[#0a0b0e] flex flex-col font-sans">
+    <div style={{ minHeight: '100vh', background: '#0a0b0e', color: '#e8eaf0', fontFamily: "'Syne', -apple-system, BlinkMacSystemFont, sans-serif" }}>
       <Navbar />
 
-      <main className="max-w-6xl w-full mx-auto px-4 md:px-6 py-8 flex-1 flex flex-col space-y-6">
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px 64px' }}>
         {/* ========================================================= */}
-        {/* 1. OVERVIEW / DASHBOARD VIEW                              */}
+        {/* 1. OVERVIEW & DIAGNOSTICS VIEW                             */}
         {/* ========================================================= */}
         {viewState === 'overview' && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Hero Banner */}
-            <div className="bg-gradient-to-r from-purple-950/40 via-[#131620] to-[#131620] border border-purple-500/30 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
-              <div className="max-w-2xl relative z-10 space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 font-mono text-xs font-bold">
-                  <span>✨</span>
-                  <span>Personalized DSA Learning Engine</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            {/* Direct Topic Test Callout Banner (if query topic is specified) */}
+            {queryTopicParam && (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(108, 142, 247, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%)',
+                border: '1px solid rgba(108, 142, 247, 0.35)',
+                borderRadius: '16px',
+                padding: '20px 24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '16px',
+                boxShadow: '0 8px 24px rgba(108, 142, 247, 0.15)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '12px',
+                    background: 'rgba(108, 142, 247, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '22px'
+                  }}>
+                    🎯
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '17px', fontWeight: 800, color: '#e8eaf0', marginBottom: '3px' }}>
+                      Ready to test your <span style={{ color: '#6c8ef7' }}>{queryTopicParam}</span> mastery?
+                    </h2>
+                    <p style={{ fontSize: '12.5px', color: '#888d9f', margin: 0 }}>
+                      Take an adaptive diagnostic test focused specifically on {queryTopicParam} subtopics, edge cases, and algorithm selection.
+                    </p>
+                  </div>
                 </div>
-                <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => handleStartAssessment('quick', queryTopicParam)}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      background: '#1a1d2b',
+                      color: '#e8eaf0',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      border: '1px solid #2e334a',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Quick Test (5 Qs)
+                  </button>
+                  <button
+                    onClick={() => handleStartAssessment('standard', queryTopicParam)}
+                    style={{
+                      padding: '10px 22px',
+                      borderRadius: '8px',
+                      background: '#6c8ef7',
+                      color: '#fff',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 16px rgba(108, 142, 247, 0.35)'
+                    }}
+                  >
+                    Start Standard Test (10 Qs) →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Main Hero Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #131620 0%, #10121a 100%)',
+              border: '1px solid #1e2230',
+              borderRadius: '18px',
+              padding: '32px',
+              position: 'relative'
+            }}>
+              <div style={{ maxWidth: '720px', marginBottom: '24px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 12px', borderRadius: '16px', background: 'rgba(108, 142, 247, 0.12)', border: '1px solid rgba(108, 142, 247, 0.25)', color: '#6c8ef7', fontSize: '12px', fontWeight: 700, marginBottom: '12px', fontFamily: "'JetBrains Mono', monospace" }}>
+                  <span>✨ Personalized DSA Coach & Assessment Engine</span>
+                </div>
+                <h1 style={{ fontSize: '30px', fontWeight: 800, letterSpacing: '-0.8px', marginBottom: '8px', lineHeight: 1.2 }}>
                   Personalized DSA Coach
                 </h1>
-                <p className="text-xs md:text-sm text-[#9aa0b8] leading-relaxed">
-                  Test your algorithmic problem-solving skills across 20 core topics. CodeBlaze analyzes your subtopic weaknesses, repeated failure patterns, and generates a personalized learning roadmap with curated practice problems.
+                <p style={{ fontSize: '13.5px', color: '#888d9f', lineHeight: 1.6, margin: 0 }}>
+                  Evaluate your algorithmic problem-solving ability across 20 foundational domains. Our engine analyzes subtopic weaknesses, failure modes, and generates an adaptive learning roadmap with curated practice problems.
                 </p>
               </div>
 
               {/* Assessment Mode Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-4 border-t border-[#262b3d]/60">
-                <div className="bg-[#0e1017]/90 border border-[#262b3d] hover:border-purple-500/40 rounded-2xl p-4 transition-all flex flex-col justify-between space-y-3">
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: '16px',
+                borderTop: '1px solid #1e2230',
+                paddingTop: '20px'
+              }}>
+                {/* Quick Assessment */}
+                <div style={{ background: '#0d0e14', border: '1px solid #1e2230', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
                   <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white">Quick Assessment</span>
-                      <span className="font-mono text-[10px] text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">~15m</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '15px', fontWeight: 700, color: '#e8eaf0' }}>Quick Assessment</span>
+                      <span style={{ fontSize: '11px', color: '#6c8ef7', background: 'rgba(108, 142, 247, 0.1)', padding: '2px 8px', borderRadius: '4px', fontFamily: "'JetBrains Mono', monospace" }}>~15m</span>
                     </div>
-                    <div className="text-[11px] text-[#5e6480] font-mono mt-1">5 Adaptive Questions</div>
-                    <p className="text-xs text-[#9aa0b8] mt-2">
-                      Fast diagnostic test to quickly identify high-level weak topics.
+                    <div style={{ fontSize: '11px', color: '#555870', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>5 Adaptive Questions</div>
+                    <p style={{ fontSize: '12px', color: '#888d9f', margin: 0, lineHeight: 1.5 }}>
+                      Fast diagnostic evaluation to quickly detect high-level topic mastery gaps.
                     </p>
                   </div>
                   <button
                     onClick={() => handleStartAssessment('quick')}
-                    className="btn-secondary text-xs py-1.5 w-full justify-center"
+                    style={{ padding: '9px', borderRadius: '7px', background: '#1a1d2b', border: '1px solid #2a2e42', color: '#e8eaf0', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                   >
-                    Start Quick Test
+                    Start Quick Test (5 Qs)
                   </button>
                 </div>
 
-                <div className="bg-[#0e1017]/90 border border-purple-500/50 hover:border-purple-400 rounded-2xl p-4 transition-all flex flex-col justify-between space-y-3 shadow-lg shadow-purple-500/10 relative">
-                  <span className="absolute -top-2.5 right-4 px-2 py-0.5 bg-purple-600 text-white font-mono text-[10px] font-bold rounded-full uppercase">
+                {/* Standard Assessment (Recommended) */}
+                <div style={{ background: '#0d0e14', border: '1px solid #6c8ef7', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px', position: 'relative', boxShadow: '0 4px 20px rgba(108, 142, 247, 0.15)' }}>
+                  <span style={{ position: 'absolute', top: '-10px', right: '14px', background: '#6c8ef7', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '10px', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' }}>
                     Recommended
                   </span>
                   <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white">Standard Assessment</span>
-                      <span className="font-mono text-[10px] text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">~30m</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '15px', fontWeight: 700, color: '#e8eaf0' }}>Standard Assessment</span>
+                      <span style={{ fontSize: '11px', color: '#6c8ef7', background: 'rgba(108, 142, 247, 0.1)', padding: '2px 8px', borderRadius: '4px', fontFamily: "'JetBrains Mono', monospace" }}>~30m</span>
                     </div>
-                    <div className="text-[11px] text-[#5e6480] font-mono mt-1">10 Adaptive Questions</div>
-                    <p className="text-xs text-[#9aa0b8] mt-2">
-                      In-depth evaluation probing subtopic mastery and boundary edge cases.
+                    <div style={{ fontSize: '11px', color: '#555870', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>10 Adaptive Questions</div>
+                    <p style={{ fontSize: '12px', color: '#888d9f', margin: 0, lineHeight: 1.5 }}>
+                      Comprehensive multi-topic test probing subtopic boundaries and algorithm selection.
                     </p>
                   </div>
                   <button
                     onClick={() => handleStartAssessment('standard')}
-                    className="btn-primary text-xs py-1.5 w-full justify-center"
+                    style={{ padding: '9px', borderRadius: '7px', background: '#6c8ef7', border: 'none', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                   >
-                    Start Standard Test
+                    Start Standard Test (10 Qs)
                   </button>
                 </div>
 
-                <div className="bg-[#0e1017]/90 border border-[#262b3d] hover:border-purple-500/40 rounded-2xl p-4 transition-all flex flex-col justify-between space-y-3">
+                {/* Topic Specific Test */}
+                <div style={{ background: '#0d0e14', border: '1px solid #1e2230', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
                   <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white">Topic-Specific Test</span>
-                      <span className="font-mono text-[10px] text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">Custom</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '15px', fontWeight: 700, color: '#e8eaf0' }}>Topic-Specific Test</span>
+                      <span style={{ fontSize: '11px', color: '#a78bfa', background: 'rgba(167, 139, 250, 0.1)', padding: '2px 8px', borderRadius: '4px', fontFamily: "'JetBrains Mono', monospace" }}>Custom</span>
                     </div>
-                    <div className="text-[11px] text-[#5e6480] font-mono mt-1">5–10 Focused Qs</div>
-                    <p className="text-xs text-[#9aa0b8] mt-2">
-                      Drill down on a specific topic (e.g. Sliding Window, Trees, DP).
+                    <div style={{ fontSize: '11px', color: '#555870', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>5–10 Focused Qs</div>
+                    <p style={{ fontSize: '12px', color: '#888d9f', margin: 0, lineHeight: 1.5 }}>
+                      Drill down on a specific domain (Sliding Window, Binary Trees, DP, Graphs).
                     </p>
                   </div>
                   <button
-                    onClick={() => setTopicTestModalOpen(true)}
-                    className="btn-secondary text-xs py-1.5 w-full justify-center"
+                    onClick={() => setTopicModalOpen(true)}
+                    style={{ padding: '9px', borderRadius: '7px', background: '#1a1d2b', border: '1px solid #2a2e42', color: '#a78bfa', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                   >
-                    Select Topic Test
+                    Choose Specific Topic →
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Current Diagnostic Analysis & Roadmap Section */}
-            {loading ? (
-              <div className="py-16 text-center text-xs font-mono text-[#5e6480]">
-                <div className="w-6 h-6 rounded-full border-2 border-purple-500 border-t-transparent animate-spin-custom mx-auto mb-2"></div>
-                Analyzing performance telemetry...
-              </div>
-            ) : recommendationsData ? (
-              <div className="space-y-6">
-                {/* AI Summary Card */}
-                {recommendationsData.aiAnalysis && (
-                  <div className="bg-[#0e1017] border border-[#262b3d] rounded-2xl p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                        <span>🧠</span>
-                        <span>AI Diagnostic Assessment Summary</span>
-                      </h2>
-                      {recommendationsData.score !== undefined && (
-                        <span className="font-mono text-xs font-bold text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/30">
-                          Overall Score: {recommendationsData.score}%
-                        </span>
-                      )}
+            {/* AI Coach Summary Card (if available) */}
+            {aiCoach && (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                borderRadius: '16px',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '20px' }}>🤖</span>
+                  <h2 style={{ fontSize: '16px', fontWeight: 800, color: '#e8eaf0', margin: 0 }}>
+                    AI Coach Diagnostic Summary
+                  </h2>
+                </div>
+                {aiCoach.summary && (
+                  <p style={{ fontSize: '13.5px', color: '#d4d8e8', lineHeight: 1.6, margin: 0 }}>
+                    {aiCoach.summary}
+                  </p>
+                )}
+                {aiCoach.actionPlan && aiCoach.actionPlan.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px solid rgba(168, 85, 247, 0.15)' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#c084fc', fontFamily: "'JetBrains Mono', monospace" }}>
+                      Target Action Items:
                     </div>
-                    <p className="text-xs text-[#ced3e8] leading-relaxed">
-                      {recommendationsData.aiAnalysis.summary}
-                    </p>
-
-                    {/* Action Plan */}
-                    {recommendationsData.aiAnalysis.actionPlan && (
-                      <div className="pt-2 border-t border-[#1c202e] space-y-2">
-                        <div className="text-[11px] font-mono font-bold text-[#5e6480] uppercase tracking-wider">
-                          Recommended Action Plan
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {recommendationsData.aiAnalysis.actionPlan.map((step, idx) => (
-                            <div key={idx} className="bg-[#131620] p-3 rounded-xl border border-[#1c202e] text-xs text-[#9aa0b8]">
-                              {step}
-                            </div>
-                          ))}
-                        </div>
+                    {aiCoach.actionPlan.map((step, idx) => (
+                      <div key={idx} style={{ fontSize: '12.5px', color: '#a0a5ba', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                        <span style={{ color: '#c084fc', fontWeight: 700 }}>•</span>
+                        <span>{step}</span>
                       </div>
-                    )}
+                    ))}
                   </div>
                 )}
+              </div>
+            )}
 
-                {/* Topic Breakdown & Weak Subtopics */}
-                {recommendationsData.topicBreakdown && recommendationsData.topicBreakdown.length > 0 && (
-                  <div className="bg-[#0e1017] border border-[#262b3d] rounded-2xl p-6 space-y-4">
-                    <h2 className="text-sm font-bold text-white">Topic Mastery & Subtopic Diagnostics</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {recommendationsData.topicBreakdown.map((tb, idx) => (
-                        <div key={idx} className="bg-[#131620] border border-[#1c202e] rounded-xl p-4 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-xs text-white capitalize">{tb.topic}</span>
-                            {getStatusBadge(tb.status)}
-                          </div>
-                          <div className="w-full bg-[#1a1e2b] h-1.5 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${
-                                tb.score >= 80 ? 'bg-emerald-500' : tb.score >= 60 ? 'bg-indigo-500' : tb.score >= 40 ? 'bg-amber-500' : 'bg-red-500'
-                              }`}
-                              style={{ width: `${tb.score}%` }}
-                            />
-                          </div>
-                          <div className="flex justify-between text-[10px] font-mono text-[#5e6480]">
-                            <span>Score: {tb.score}%</span>
-                            <span>{tb.correctQuestions || 0}/{tb.totalQuestions || 0} Qs</span>
-                          </div>
+            {/* Diagnostic Results & Recommendations Data */}
+            {topicList.length > 0 && (
+              <div style={{ background: '#131620', border: '1px solid #1e2230', borderRadius: '16px', padding: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                  <div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#e8eaf0', margin: 0 }}>
+                      DSA Topic Mastery Diagnostics
+                    </h2>
+                    <p style={{ fontSize: '12px', color: '#7a8099', margin: '2px 0 0' }}>
+                      Performance calibrated across evaluated algorithmic domains
+                    </p>
+                  </div>
+                </div>
 
-                          {tb.weakSubtopics && tb.weakSubtopics.length > 0 && (
-                            <div className="pt-2 text-[11px] text-red-400 font-mono">
-                              ⚠️ Weak in: {tb.weakSubtopics.join(', ')}
-                            </div>
-                          )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
+                  {topicList.map((tp, idx) => {
+                    const score = tp.score || 0;
+                    const color = getScoreColor(score);
+                    const topicName = (tp.topic || 'Topic').replace('-', ' ');
+                    return (
+                      <div
+                        key={tp.topic || idx}
+                        style={{
+                          background: '#0d0e14',
+                          border: '1px solid #1e2230',
+                          borderRadius: '10px',
+                          padding: '14px 16px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '13px', textTransform: 'capitalize' }}>{topicName}</span>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            fontFamily: "'JetBrains Mono', monospace",
+                            color,
+                            background: `${color}15`,
+                            padding: '1px 6px',
+                            borderRadius: '4px'
+                          }}>
+                            {score}%
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
-                {/* Recommended Practice Problems */}
-                {recommendationsData.recommendations && recommendationsData.recommendations.length > 0 && (
-                  <div className="bg-[#0e1017] border border-[#262b3d] rounded-2xl p-6 space-y-4">
-                    <h2 className="text-sm font-bold text-white">Recommended Problem Sets</h2>
-                    <div className="space-y-4">
-                      {recommendationsData.recommendations.map((rec, idx) => (
-                        <div key={idx} className="bg-[#131620] border border-[#262b3d] rounded-xl p-4 space-y-3">
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 font-mono text-xs font-bold capitalize">
-                                {rec.topic}
-                              </span>
-                              <span className="text-xs font-semibold text-white">
-                                {rec.subtopic}
-                              </span>
-                            </div>
-                            <span className="text-[11px] font-mono text-[#5e6480] bg-[#0e1017] px-2.5 py-1 rounded border border-[#1c202e]">
-                              Priority {rec.priority}
-                            </span>
+                        <div style={{ height: '5px', background: '#181b26', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
+                          <div style={{ width: `${Math.max(5, score)}%`, height: '100%', background: color }} />
+                        </div>
+
+                        {tp.weakSubtopics && tp.weakSubtopics.length > 0 && (
+                          <div style={{ fontSize: '11px', color: '#ef4444', fontFamily: "'JetBrains Mono', monospace" }}>
+                            🔴 Weak in: {tp.weakSubtopics.join(', ')}
                           </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-                          <p className="text-xs text-[#9aa0b8] font-sans">
-                            💡 {rec.reason}
-                          </p>
+            {/* Personalized Learning Roadmaps */}
+            {roadmaps.length > 0 && (
+              <div style={{ background: '#131620', border: '1px solid #1e2230', borderRadius: '16px', padding: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                  <div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#e8eaf0', margin: 0 }}>
+                      Personalized Study Roadmaps
+                    </h2>
+                    <p style={{ fontSize: '12px', color: '#7a8099', margin: '2px 0 0' }}>
+                      Prioritized learning sequences and curated problems tailored to your skill gaps
+                    </p>
+                  </div>
+                  <NavLink to="/problems" style={{ fontSize: '12px', color: '#6c8ef7', textDecoration: 'none', fontWeight: 600 }}>
+                    Browse All Problems →
+                  </NavLink>
+                </div>
 
-                          {/* Problem Cards */}
-                          {rec.recommendedProblems && rec.recommendedProblems.length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                              {rec.recommendedProblems.map((rp, pIdx) => (
-                                <div
-                                  key={pIdx}
-                                  onClick={() => navigate(`/problems/${rp.problemId}`)}
-                                  className="p-3 bg-[#0e1017] hover:bg-[#1a1e2b] border border-[#1c202e] hover:border-indigo-500/40 rounded-xl cursor-pointer transition-all flex items-center justify-between group"
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  {roadmaps.map((rm, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        background: '#0d0e14',
+                        border: '1px solid #1e2230',
+                        borderRadius: '12px',
+                        padding: '18px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '14px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            background: 'rgba(108, 142, 247, 0.15)',
+                            color: '#6c8ef7',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            fontFamily: "'JetBrains Mono', monospace"
+                          }}>
+                            Priority #{rm.priority || idx + 1}
+                          </span>
+                          <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#e8eaf0', margin: 0, textTransform: 'capitalize' }}>
+                            {rm.topic} — {rm.subtopic}
+                          </h3>
+                        </div>
+                        <NavLink
+                          to={`/problems?topic=${encodeURIComponent(rm.topic)}`}
+                          style={{ fontSize: '12px', color: '#6c8ef7', textDecoration: 'none', fontWeight: 600 }}
+                        >
+                          View {rm.topic} Problems →
+                        </NavLink>
+                      </div>
+
+                      {rm.reason && (
+                        <p style={{ fontSize: '12.5px', color: '#888d9f', margin: 0, lineHeight: 1.5 }}>
+                          {rm.reason}
+                        </p>
+                      )}
+
+                      {/* Learning Steps */}
+                      {rm.learningSteps && rm.learningSteps.length > 0 && (
+                        <div style={{ background: '#11131c', border: '1px solid #1c202e', borderRadius: '8px', padding: '12px 14px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: '#5e6480', textTransform: 'uppercase', marginBottom: '6px', fontFamily: "'JetBrains Mono', monospace" }}>
+                            Action Plan
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {rm.learningSteps.map((step, sIdx) => (
+                              <div key={sIdx} style={{ fontSize: '12px', color: '#cbd0e0', display: 'flex', gap: '6px' }}>
+                                <span style={{ color: '#6c8ef7' }}>{sIdx + 1}.</span>
+                                <span>{step.replace(/^\d+\.\s*/, '')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recommended Problems */}
+                      {rm.recommendedProblems && rm.recommendedProblems.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: '#5e6480', textTransform: 'uppercase', marginBottom: '8px', fontFamily: "'JetBrains Mono', monospace" }}>
+                            Target Practice Problems
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '8px' }}>
+                            {rm.recommendedProblems.map((p, pIdx) => {
+                              const pId = p.problemId || p._id || p.id;
+                              const diff = (p.difficulty || 'medium').toLowerCase();
+                              const diffColor = diff === 'easy' ? '#22c55e' : diff === 'hard' ? '#ef4444' : '#f59e0b';
+
+                              return (
+                                <NavLink
+                                  key={pId || pIdx}
+                                  to={`/problem/${pId}`}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '10px 14px',
+                                    background: '#131620',
+                                    border: '1px solid #1e2230',
+                                    borderRadius: '8px',
+                                    textDecoration: 'none',
+                                    transition: 'border-color 0.15s'
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#6c8ef7')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2230')}
                                 >
                                   <div>
-                                    <div className="text-xs font-semibold text-white group-hover:text-indigo-300">
-                                      {rp.title}
+                                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#e8eaf0', marginBottom: '2px' }}>
+                                      {p.title}
                                     </div>
-                                    <div className="text-[11px] text-[#5e6480] font-mono mt-0.5 capitalize">
-                                      {rp.difficulty} • {rp.subtopic || rp.topic}
-                                    </div>
+                                    <span style={{ fontSize: '10px', color: diffColor, fontWeight: 700, textTransform: 'capitalize', fontFamily: "'JetBrains Mono', monospace" }}>
+                                      {diff}
+                                    </span>
                                   </div>
-                                  <span className="text-xs font-mono text-indigo-400 group-hover:translate-x-0.5 transition-transform">
-                                    Solve →
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                                  <span style={{ color: '#6c8ef7', fontSize: '12px', fontWeight: 700 }}>Solve →</span>
+                                </NavLink>
+                              );
+                            })}
+                          </div>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
-            ) : null}
+            )}
           </div>
         )}
 
         {/* ========================================================= */}
-        {/* 2. ACTIVE ADAPTIVE TESTING VIEW                           */}
+        {/* 2. ACTIVE ASSESSMENT TESTING SESSION                      */}
         {/* ========================================================= */}
         {viewState === 'testing' && currentQuestion && (
-          <div className="max-w-3xl w-full mx-auto space-y-6 animate-fade-in font-sans">
+          <div style={{ maxWidth: '840px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Top Testing Header Bar */}
-            <div className="flex items-center justify-between bg-[#0e1017] border border-[#262b3d] rounded-2xl px-5 py-3.5">
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-xs text-purple-400 font-bold">
+            <div style={{
+              background: '#131620',
+              border: '1px solid #1e2230',
+              borderRadius: '14px',
+              padding: '14px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: '#6c8ef7' }}>
                   Question {questionIndex + 1} of {totalQuestions}
                 </span>
-                <span className="text-[11px] font-mono capitalize px-2 py-0.5 rounded bg-[#1a1e2b] text-[#9aa0b8] border border-[#262b3d]">
+                <span style={{ color: '#3a3f58' }}>•</span>
+                <span style={{ fontSize: '11px', textTransform: 'capitalize', color: '#888d9f', background: '#0d0e14', padding: '2px 8px', borderRadius: '4px', border: '1px solid #202434', fontFamily: "'JetBrains Mono', monospace" }}>
                   {currentQuestion.topic}
                 </span>
-                {currentQuestion.subtopic && (
-                  <span className="text-[11px] font-mono text-[#5e6480]">
-                    • {currentQuestion.subtopic}
-                  </span>
-                )}
               </div>
 
-              <div className="flex items-center gap-3 font-mono text-xs">
-                <span className="text-[#9aa0b8]">⏱ {Math.floor(timeSpent / 60)}:{(timeSpent % 60).toString().padStart(2, '0')}</span>
+              {/* Timer & Exit */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', color: '#f59e0b' }}>
+                  <span>⏱</span>
+                  <span>{formatTimer(timeSpent)}</span>
+                </div>
                 <button
                   onClick={() => {
-                    if (window.confirm("Exit assessment test? Your progress will be abandoned.")) {
+                    if (window.confirm('Are you sure you want to exit the assessment? Your current progress in this session will not be completed.')) {
                       setViewState('overview');
                     }
                   }}
-                  className="text-[#5e6480] hover:text-red-400 text-xs cursor-pointer"
+                  style={{
+                    background: 'none',
+                    border: '1px solid #262b3d',
+                    borderRadius: '6px',
+                    color: '#7a8099',
+                    fontSize: '11px',
+                    padding: '4px 8px',
+                    cursor: 'pointer'
+                  }}
                 >
-                  Exit
+                  Exit Test
                 </button>
               </div>
             </div>
 
             {/* Question Card */}
-            <div className="bg-[#0e1017] border border-[#262b3d] rounded-2xl p-6 space-y-5 shadow-2xl">
-              {/* Question Title & Prompt */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-bold text-white tracking-tight">
-                    {currentQuestion.title}
-                  </h2>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-                    currentQuestion.difficulty === 'easy' ? 'badge-easy' : currentQuestion.difficulty === 'medium' ? 'badge-medium' : 'badge-hard'
-                  }`}>
+            <div style={{
+              background: '#131620',
+              border: '1px solid #1e2230',
+              borderRadius: '16px',
+              padding: '28px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
+            }}>
+              {/* Question Metadata */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    color: currentQuestion.difficulty === 'easy' ? '#22c55e' : currentQuestion.difficulty === 'hard' ? '#ef4444' : '#f59e0b'
+                  }}>
                     {currentQuestion.difficulty}
                   </span>
+                  {currentQuestion.subtopic && (
+                    <span style={{ fontSize: '11px', color: '#7a8099', fontFamily: "'JetBrains Mono', monospace" }}>
+                      • {currentQuestion.subtopic}
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs md:text-sm text-[#ced3e8] leading-relaxed">
-                  {currentQuestion.question}
-                </p>
+
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#e8eaf0', lineHeight: 1.5, margin: 0 }}>
+                  {currentQuestion.question || currentQuestion.title}
+                </h2>
               </div>
 
-              {/* Code Snippet if present */}
+              {/* Code Snippet (if present) */}
               {currentQuestion.codeSnippet && (
-                <pre className="p-3.5 bg-[#131620] border border-[#262b3d] rounded-xl font-mono text-xs text-[#f1f3f9] overflow-x-auto whitespace-pre leading-relaxed">
+                <pre style={{
+                  margin: 0,
+                  background: '#0a0b0e',
+                  border: '1px solid #1e2230',
+                  borderRadius: '8px',
+                  padding: '14px 16px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '12px',
+                  color: '#d4d8e8',
+                  whiteSpace: 'pre-wrap',
+                  overflowX: 'auto'
+                }}>
                   {currentQuestion.codeSnippet}
                 </pre>
               )}
 
-              {/* Options */}
-              <div className="space-y-2.5 pt-2">
-                {currentQuestion.options?.map((opt) => {
-                  const isSelected = selectedOption === opt.id;
-                  let optStyle = "bg-[#131620] hover:bg-[#1a1e2b] border-[#262b3d] text-[#ced3e8]";
+              {/* Options List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {currentQuestion.options?.map((opt, idx) => {
+                  const optId = opt.id || ['A', 'B', 'C', 'D'][idx] || String(idx);
+                  const isSelected = selectedOption === optId || selectedOption === idx;
+
+                  // Feedback border / coloring if answered
+                  let borderStyle = '1px solid #1e2230';
+                  let bgStyle = '#0d0e14';
+                  let textColor = '#e8eaf0';
 
                   if (answerFeedback) {
-                    if (opt.id === answerFeedback.correctOption) {
-                      optStyle = "bg-emerald-500/15 border-emerald-500 text-emerald-300 font-semibold";
+                    if (optId === answerFeedback.correctOption) {
+                      borderStyle = '1px solid #22c55e';
+                      bgStyle = 'rgba(34, 197, 94, 0.1)';
+                      textColor = '#22c55e';
                     } else if (isSelected && !answerFeedback.isCorrect) {
-                      optStyle = "bg-red-500/15 border-red-500 text-red-300";
+                      borderStyle = '1px solid #ef4444';
+                      bgStyle = 'rgba(239, 68, 68, 0.1)';
+                      textColor = '#ef4444';
                     }
                   } else if (isSelected) {
-                    optStyle = "bg-indigo-600/20 border-indigo-500 text-white font-semibold";
+                    borderStyle = '1px solid #6c8ef7';
+                    bgStyle = 'rgba(108, 142, 247, 0.12)';
                   }
 
                   return (
-                    <div
-                      key={opt.id}
-                      onClick={() => !answerFeedback && setSelectedOption(opt.id)}
-                      className={`p-3.5 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${optStyle}`}
+                    <button
+                      key={optId}
+                      disabled={!!answerFeedback}
+                      onClick={() => setSelectedOption(optId)}
+                      style={{
+                        padding: '14px 18px',
+                        borderRadius: '10px',
+                        background: bgStyle,
+                        border: borderStyle,
+                        color: textColor,
+                        fontSize: '13px',
+                        textAlign: 'left',
+                        cursor: answerFeedback ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        transition: 'all 0.15s'
+                      }}
                     >
-                      <span className="w-5 h-5 rounded-full bg-[#1a1e2b] border border-[#262b3d] flex items-center justify-center font-mono text-xs font-bold flex-shrink-0 mt-0.5">
-                        {opt.id}
+                      <span style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: isSelected ? '#6c8ef7' : '#1a1d2b',
+                        color: isSelected ? '#000' : '#888d9f',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        flexShrink: 0
+                      }}>
+                        {optId}
                       </span>
-                      <span className="text-xs leading-relaxed flex-1">{opt.text}</span>
-                    </div>
+                      <span style={{ flex: 1 }}>{opt.text || opt}</span>
+                    </button>
                   );
                 })}
               </div>
 
-              {/* Hint Accordion */}
-              {currentQuestion.hints && currentQuestion.hints.length > 0 && !answerFeedback && (
-                <div className="pt-2">
-                  {!showHint ? (
-                    <button
-                      onClick={() => {
-                        setShowHint(true);
-                        setHintsUsed((h) => h + 1);
-                      }}
-                      className="text-xs font-mono text-purple-400 hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none"
-                    >
-                      <span>💡</span>
-                      <span>Need a hint? (-2 pts penalty)</span>
-                    </button>
-                  ) : (
-                    <div className="p-3 bg-purple-500/10 border border-purple-500/25 rounded-xl text-xs text-purple-300 animate-fade-in font-sans">
-                      <strong>💡 Hint:</strong> {currentQuestion.hints[0]}
-                    </div>
+              {/* Hint Box (if triggered) */}
+              {showHint && currentQuestion.hints && currentQuestion.hints.length > 0 && (
+                <div style={{
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  background: 'rgba(167, 139, 250, 0.08)',
+                  border: '1px solid rgba(167, 139, 250, 0.25)',
+                  fontSize: '12px',
+                  color: '#c084fc'
+                }}>
+                  <strong>💡 Hint:</strong> {currentQuestion.hints[0]}
+                </div>
+              )}
+
+              {/* Answer Feedback Banner */}
+              {answerFeedback && (
+                <div style={{
+                  padding: '16px',
+                  borderRadius: '10px',
+                  background: answerFeedback.isCorrect ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                  border: answerFeedback.isCorrect ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      fontWeight: 800,
+                      color: answerFeedback.isCorrect ? '#22c55e' : '#ef4444',
+                      fontSize: '14px',
+                      fontFamily: "'JetBrains Mono', monospace"
+                    }}>
+                      {answerFeedback.isCorrect ? '✓ Correct Answer!' : '✗ Incorrect'}
+                    </span>
+                  </div>
+
+                  {answerFeedback.explanation && (
+                    <p style={{ fontSize: '12.5px', color: '#ced3e8', lineHeight: 1.5, margin: 0 }}>
+                      {answerFeedback.explanation}
+                    </p>
                   )}
                 </div>
               )}
 
-              {/* Answer Feedback & Explanation */}
-              {answerFeedback && (
-                <div className={`p-4 rounded-xl border space-y-2 animate-fade-in ${
-                  answerFeedback.isCorrect ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'
-                }`}>
-                  <div className="font-bold text-xs flex items-center gap-2">
-                    <span>{answerFeedback.isCorrect ? '✓ Correct Answer!' : '✗ Incorrect'}</span>
-                  </div>
-                  <p className="text-xs text-[#ced3e8] leading-relaxed font-sans">
-                    {answerFeedback.explanation}
-                  </p>
-                </div>
-              )}
-
-              {/* Footer Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#1c202e]">
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid #1e2230' }}>
                 {!answerFeedback ? (
-                  <button
-                    onClick={handleSubmitAnswer}
-                    disabled={!selectedOption || submittingAnswer}
-                    className="btn-primary text-xs py-2 px-5"
-                  >
-                    {submittingAnswer ? "Evaluating..." : "Submit Answer"}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setShowHint(!showHint)}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: '8px',
+                        background: '#1a1d2b',
+                        border: '1px solid #2a2e42',
+                        color: '#c084fc',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {showHint ? 'Hide Hint' : '💡 Need a Hint?'}
+                    </button>
+
+                    <button
+                      disabled={!selectedOption || submittingAnswer}
+                      onClick={handleSubmitAnswer}
+                      style={{
+                        padding: '10px 22px',
+                        borderRadius: '8px',
+                        background: !selectedOption ? '#1a1d2b' : '#6c8ef7',
+                        color: !selectedOption ? '#555870' : '#fff',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: !selectedOption ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {submittingAnswer ? 'Submitting...' : 'Submit Answer →'}
+                    </button>
+                  </>
                 ) : (
                   <button
-                    onClick={handleProceedNext}
-                    className="btn-primary text-xs py-2 px-5 bg-indigo-600 hover:bg-indigo-500"
+                    onClick={handleNextQuestion}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      background: '#6c8ef7',
+                      color: '#fff',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
                   >
-                    {answerFeedback.isCompleted ? "View Assessment Results →" : "Next Adaptive Question →"}
+                    {answerFeedback.isCompleted || questionIndex + 1 >= totalQuestions
+                      ? 'View Diagnostic Skill Report →'
+                      : 'Next Adaptive Question →'}
                   </button>
                 )}
               </div>
@@ -543,175 +902,205 @@ export default function RecommendationsPage() {
         )}
 
         {/* ========================================================= */}
-        {/* 3. FINAL ASSESSMENT RESULTS VIEW                          */}
+        {/* 3. ASSESSMENT COMPLETED REPORT VIEW                       */}
         {/* ========================================================= */}
-        {viewState === 'completed' && recommendationsData && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="bg-[#0e1017] border border-purple-500/40 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#262b3d] pb-6">
-                <div>
-                  <div className="text-xs font-mono text-purple-400 font-bold uppercase tracking-wider">
-                    Assessment Complete
-                  </div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight mt-1">
-                    Your DSA Skill Analysis
-                  </h1>
-                </div>
+        {viewState === 'completed' && completedReport && (
+          <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Score Banner */}
+            <div style={{
+              background: '#131620',
+              border: '1px solid #1e2230',
+              borderRadius: '16px',
+              padding: '32px',
+              textAlign: 'center'
+            }}>
+              <span style={{ fontSize: '36px', display: 'block', marginBottom: '8px' }}>🎉</span>
+              <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#e8eaf0', marginBottom: '4px' }}>
+                Diagnostic Assessment Complete
+              </h1>
+              <p style={{ fontSize: '13px', color: '#7a8099', marginBottom: '20px' }}>
+                Here is your personalized DSA skill breakdown and study roadmap:
+              </p>
 
-                <div className="flex items-center gap-4 bg-[#131620] p-4 rounded-2xl border border-[#262b3d]">
-                  <div className="text-center">
-                    <div className="text-[10px] font-mono text-[#5e6480] uppercase">Overall Score</div>
-                    <div className="font-mono text-2xl font-bold text-purple-400 mt-0.5">
-                      {recommendationsData.score}%
-                    </div>
-                  </div>
-                  <div className="w-px h-8 bg-[#262b3d]" />
-                  <div className="text-center">
-                    <div className="text-[10px] font-mono text-[#5e6480] uppercase">Performance</div>
-                    <div className="font-mono text-sm font-bold text-white mt-1">
-                      {recommendationsData.score >= 80 ? 'Strong' : recommendationsData.score >= 60 ? 'Good' : recommendationsData.score >= 40 ? 'Needs Practice' : 'Weak'}
-                    </div>
-                  </div>
-                </div>
+              <div style={{
+                display: 'inline-flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '18px 36px',
+                borderRadius: '16px',
+                background: '#0d0e14',
+                border: '1px solid #1e2230',
+                marginBottom: '16px'
+              }}>
+                <span style={{ fontSize: '11px', color: '#555870', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
+                  Overall Skill Score
+                </span>
+                <span style={{
+                  fontSize: '48px',
+                  fontWeight: 800,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: getScoreColor(completedReport.overallScore ?? completedReport.score ?? 75),
+                  lineHeight: 1.2
+                }}>
+                  {completedReport.overallScore ?? completedReport.score ?? 75}%
+                </span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: getScoreColor(completedReport.overallScore ?? completedReport.score ?? 75) }}>
+                  {getScoreLabel(completedReport.overallScore ?? completedReport.score ?? 75)}
+                </span>
               </div>
+            </div>
 
-              {/* Strengths and Weaknesses Breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-[#131620] border border-emerald-500/30 rounded-2xl p-5 space-y-3">
-                  <h3 className="text-xs font-bold text-emerald-400 flex items-center gap-2 font-mono uppercase tracking-wider">
-                    <span>✓</span>
-                    <span>Strong Topics & Subtopics</span>
+            {/* AI Coach Analysis */}
+            {completedReport.aiAnalysis && (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                borderRadius: '16px',
+                padding: '24px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '20px' }}>🧠</span>
+                  <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#e8eaf0', margin: 0 }}>
+                    AI Coach Evaluation
                   </h3>
-                  <ul className="space-y-1.5 text-xs text-[#ced3e8]">
-                    {recommendationsData.strongTopics?.length > 0 ? (
-                      recommendationsData.strongTopics.map((st, i) => (
-                        <li key={i} className="flex items-center gap-2">
-                          <span className="text-emerald-400">•</span>
-                          <span className="capitalize">{st}</span>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-[#5e6480]">Continue practicing to unlock strong masteries.</li>
-                    )}
-                  </ul>
                 </div>
-
-                <div className="bg-[#131620] border border-red-500/30 rounded-2xl p-5 space-y-3">
-                  <h3 className="text-xs font-bold text-red-400 flex items-center gap-2 font-mono uppercase tracking-wider">
-                    <span>⚠️</span>
-                    <span>Areas Requiring Focus</span>
-                  </h3>
-                  <ul className="space-y-1.5 text-xs text-[#ced3e8]">
-                    {recommendationsData.weakSubtopics?.length > 0 ? (
-                      recommendationsData.weakSubtopics.map((wt, i) => (
-                        <li key={i} className="flex items-center gap-2">
-                          <span className="text-red-400">•</span>
-                          <span>{wt}</span>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-[#5e6480]">No critical weaknesses detected!</li>
-                    )}
-                  </ul>
-                </div>
-              </div>
-
-              {/* Learning Roadmap */}
-              {recommendationsData.recommendations && (
-                <div className="space-y-4 pt-2">
-                  <h3 className="text-sm font-bold text-white">Recommended Learning Path</h3>
-                  <div className="space-y-3">
-                    {recommendationsData.recommendations.map((rec, i) => (
-                      <div key={i} className="bg-[#131620] border border-[#262b3d] rounded-xl p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-white capitalize">{rec.topic} • {rec.subtopic}</span>
-                          <span className="text-[10px] font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/25">
-                            Priority {rec.priority}
-                          </span>
-                        </div>
-                        <p className="text-xs text-[#9aa0b8]">{rec.reason}</p>
-                        {rec.recommendedProblems && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                            {rec.recommendedProblems.map((rp, pi) => (
-                              <div
-                                key={pi}
-                                onClick={() => navigate(`/problems/${rp.problemId}`)}
-                                className="p-2.5 bg-[#0e1017] hover:bg-[#1a1e2b] rounded-lg border border-[#1c202e] cursor-pointer flex justify-between items-center text-xs"
-                              >
-                                <span className="text-white font-medium">{rp.title}</span>
-                                <span className="text-indigo-400 font-mono text-[11px]">Solve →</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                {completedReport.aiAnalysis.summary && (
+                  <p style={{ fontSize: '13.5px', color: '#d4d8e8', lineHeight: 1.6, marginBottom: '14px' }}>
+                    {completedReport.aiAnalysis.summary}
+                  </p>
+                )}
+                {completedReport.aiAnalysis.actionPlan && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#c084fc', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>
+                      Next Steps:
+                    </span>
+                    {completedReport.aiAnalysis.actionPlan.map((act, aIdx) => (
+                      <div key={aIdx} style={{ fontSize: '12.5px', color: '#a0a5ba', display: 'flex', gap: '6px' }}>
+                        <span style={{ color: '#c084fc' }}>•</span>
+                        <span>{act}</span>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {/* Action: Return or Retake */}
-              <div className="flex items-center justify-between pt-4 border-t border-[#262b3d]">
-                <button
-                  onClick={() => setViewState('overview')}
-                  className="btn-secondary text-xs py-2 px-4"
-                >
-                  Back to Coach Overview
-                </button>
-                <button
-                  onClick={() => handleStartAssessment('standard')}
-                  className="btn-primary text-xs py-2 px-5"
-                >
-                  Retake Assessment
-                </button>
+                )}
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Topic-Specific Test Modal */}
-        {topicTestModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans">
-            <div className="fixed inset-0" onClick={() => setTopicTestModalOpen(false)} />
-            <div className="relative w-full max-w-md bg-[#131620] border border-[#262b3d] rounded-2xl p-6 shadow-2xl z-10 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm text-white">Select DSA Topic to Test</h3>
-                <button onClick={() => setTopicTestModalOpen(false)} className="text-[#5e6480] hover:text-white text-xs">✕</button>
-              </div>
-              <p className="text-xs text-[#9aa0b8]">
-                Generate an adaptive 10-question assessment focused exclusively on your selected topic.
-              </p>
-
-              <select
-                value={selectedTopicTest}
-                onChange={(e) => setSelectedTopicTest(e.target.value)}
-                className="w-full bg-[#0e1017] border border-[#262b3d] rounded-xl p-3 text-xs font-mono text-white outline-none"
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                onClick={() => setViewState('overview')}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  background: '#1a1d2b',
+                  border: '1px solid #2a2e42',
+                  color: '#e8eaf0',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
               >
-                {[
-                  'arrays', 'strings', 'hashing', 'two-pointers', 'sliding-window',
-                  'stack', 'queue', 'linked-list', 'binary-search', 'recursion',
-                  'backtracking', 'trees', 'bst', 'heap', 'greedy', 'graphs', 'dp',
-                  'bit-manipulation', 'trie', 'union-find'
-                ].map((t) => (
-                  <option key={t} value={t}>{t.replace('-', ' ').toUpperCase()}</option>
-                ))}
-              </select>
+                ← Back to Dashboard
+              </button>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button onClick={() => setTopicTestModalOpen(false)} className="btn-secondary text-xs py-1.5 px-3">
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleStartAssessment('standard', selectedTopicTest)}
-                  className="btn-primary text-xs py-1.5 px-4"
-                >
-                  Start Topic Test
-                </button>
-              </div>
+              <NavLink
+                to="/problems"
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: '8px',
+                  background: '#6c8ef7',
+                  color: '#fff',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  textDecoration: 'none'
+                }}
+              >
+                Practice Recommended Problems →
+              </NavLink>
             </div>
           </div>
         )}
       </main>
+
+      {/* Topic-Specific Test Selection Modal */}
+      {topicModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '24px'
+          }}
+          onClick={() => setTopicModalOpen(false)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '680px',
+              background: '#11131a',
+              border: '1px solid #262a3d',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 24px 64px rgba(0, 0, 0, 0.6)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#e8eaf0', margin: 0 }}>
+                  Choose Topic to Test
+                </h3>
+                <p style={{ fontSize: '12px', color: '#7a8099', margin: '2px 0 0' }}>
+                  Select one of the 20 DSA domains to start a focused diagnostic test
+                </p>
+              </div>
+              <button onClick={() => setTopicModalOpen(false)} style={{ background: 'none', border: 'none', color: '#7a8099', fontSize: '18px', cursor: 'pointer' }}>
+                ✕
+              </button>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              gap: '10px',
+              maxHeight: '380px',
+              overflowY: 'auto',
+              paddingRight: '4px'
+            }}>
+              {ALL_TOPICS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => handleStartAssessment('standard', t.id)}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    background: '#0d0e14',
+                    border: '1px solid #1e2230',
+                    color: '#e8eaf0',
+                    fontSize: '13px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'border-color 0.15s'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#6c8ef7')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2230')}
+                >
+                  <span>{t.icon}</span>
+                  <span style={{ fontWeight: 600 }}>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

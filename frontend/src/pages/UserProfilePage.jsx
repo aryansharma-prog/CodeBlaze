@@ -63,10 +63,10 @@ export default function UserProfilePage() {
   const easySolved = stats?.easySolved || 0;
   const mediumSolved = stats?.mediumSolved || 0;
   const hardSolved = stats?.hardSolved || 0;
-  const topicPerf = stats?.topicPerformance || [];
+  const topicPerf = stats?.topicStats || stats?.topicPerformance || [];
 
-  const strongTopics = topicPerf.filter((t) => t.score >= 70);
-  const weakTopics = topicPerf.filter((t) => t.score < 50);
+  const strongTopics = topicPerf.filter((t) => (t.score || 0) >= 70);
+  const weakTopics = topicPerf.filter((t) => (t.score || 0) < 50);
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0b0e', color: '#e8eaf0', fontFamily: "'Syne', -apple-system, sans-serif" }}>
@@ -280,15 +280,15 @@ export default function UserProfilePage() {
                   const color = score >= 80 ? '#22c55e' : score >= 60 ? '#6c8ef7' : score >= 40 ? '#f59e0b' : '#ef4444';
 
                   return (
-                    <div key={tp.topic}>
+                    <div key={tp.topic || idx}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px' }}>
-                        <span style={{ fontWeight: 600 }}>{tp.topic}</span>
+                        <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{tp.name || tp.topic}</span>
                         <span style={{ fontFamily: "'JetBrains Mono', monospace", color, fontWeight: 700 }}>
                           {score} / 100
                         </span>
                       </div>
                       <div style={{ height: '6px', background: '#0d0e14', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{ width: `${score}%`, height: '100%', background: color, borderRadius: '3px' }} />
+                        <div style={{ width: `${Math.max(5, score)}%`, height: '100%', background: color, borderRadius: '3px' }} />
                       </div>
                     </div>
                   );
@@ -332,7 +332,7 @@ export default function UserProfilePage() {
                   const dateStr = a.completedAt
                     ? new Date(a.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                     : 'Recently';
-                  const score = a.overallScore || 0;
+                  const score = a.score ?? a.overallScore ?? 0;
                   const scoreColor = score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
 
                   return (
