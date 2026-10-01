@@ -1,6 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import axiosClient from '../utils/axiosClient';
 
 export const STARTER_TEMPLATES = {
   cpp: `#include <bits/stdc++.h>
@@ -53,15 +52,18 @@ export default function CodeEditor({
   onChange = () => {},
   onRun = () => {},
   onSubmit = () => {},
+  onLanguageChange = () => {},
+  onToggleAI = () => {},
+  aiMentorOpen = false,
+  isExecuting = false,
   readOnly = false
 }) {
   const editorRef = useRef(null);
-  const [fontSize, setFontSize] = useState(14);
+  const [fontSize, setFontSize] = useState(13);
   const [minimap, setMinimap] = useState(false);
-  const [wordWrap, setWordWrap] = useState('on');
   const [copied, setCopied] = useState(false);
-  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
   const [draftAlert, setDraftAlert] = useState(null);
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
 
   const monacoLang = MONACO_LANG_MAP[language] || 'cpp';
 
@@ -69,7 +71,7 @@ export default function CodeEditor({
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
 
-    // Define custom dark theme
+    // Custom dark theme
     monaco.editor.defineTheme('codeblaze-dark', {
       base: 'vs-dark',
       inherit: true,
@@ -82,14 +84,14 @@ export default function CodeEditor({
         { token: 'identifier', foreground: 'f1f3f9' }
       ],
       colors: {
-        'editor.background': '#0e1017',
-        'editor.foreground': '#f1f3f9',
-        'editorCursor.foreground': '#818cf8',
-        'editor.lineHighlightBackground': '#161924',
-        'editorLineNumber.foreground': '#454b66',
-        'editorLineNumber.activeForeground': '#a5b4fc',
-        'editor.selectionBackground': '#312e81',
-        'editor.inactiveSelectionBackground': '#1e1b4b'
+        'editor.background': '#0a0b0e',
+        'editor.foreground': '#e8eaf0',
+        'editorCursor.foreground': '#6c8ef7',
+        'editor.lineHighlightBackground': '#131620',
+        'editorLineNumber.foreground': '#3a3f58',
+        'editorLineNumber.activeForeground': '#6c8ef7',
+        'editor.selectionBackground': '#263359',
+        'editor.inactiveSelectionBackground': '#182038'
       }
     });
 
@@ -106,7 +108,7 @@ export default function CodeEditor({
     });
   };
 
-  // Draft restoration logic
+  // Draft restoration detection
   useEffect(() => {
     if (!problemId) return;
     const localDraftKey = `cb_draft_${problemId}_${language}`;
@@ -115,7 +117,7 @@ export default function CodeEditor({
     if (savedDraft && savedDraft.trim() !== code.trim() && !hasRestoredDraft) {
       setDraftAlert({
         draftCode: savedDraft,
-        text: "You have an unsaved local draft for this problem."
+        text: "You have a saved local draft for this problem."
       });
     }
   }, [problemId, language]);
@@ -134,7 +136,7 @@ export default function CodeEditor({
   };
 
   const handleResetCode = () => {
-    if (window.confirm("Reset editor to default starter template? Your current code will be lost.")) {
+    if (window.confirm("Reset editor to default starter template? Current changes will be overwritten.")) {
       const template = STARTER_TEMPLATES[monacoLang] || STARTER_TEMPLATES.cpp;
       onChange(template);
       if (problemId) {
@@ -160,103 +162,261 @@ export default function CodeEditor({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0e1017] border border-[#262b3d] rounded-xl overflow-hidden font-sans">
-      {/* Editor Toolbar */}
-      <div className="flex items-center justify-between px-3.5 py-2 bg-[#131620] border-b border-[#262b3d] flex-shrink-0 text-xs">
-        {/* Left Toolbar: Language & Shortcuts reminder */}
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded bg-[#1a1e2b] text-[#9aa0b8] font-mono text-[11px] font-semibold border border-[#262b3d] uppercase">
-            {monacoLang}
-          </span>
-          <span className="text-[#5e6480] text-[11px] hidden lg:inline font-mono">
-            Run: <kbd className="bg-[#1a1e2b] px-1 py-0.5 rounded text-[10px] text-[#9aa0b8]">⌘↵</kbd>
-          </span>
-        </div>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      background: '#11131a',
+      border: '1px solid #1e2230',
+      borderRadius: '12px',
+      overflow: 'hidden',
+      fontFamily: "'Syne', -apple-system, sans-serif"
+    }}>
+      {/* Unified Editor Top Bar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 12px',
+        height: '42px',
+        background: '#0d0e14',
+        borderBottom: '1px solid #1e2230',
+        flexShrink: 0,
+        gap: '8px'
+      }}>
+        {/* Left: Language selector & tools */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <select
+            value={language}
+            onChange={(e) => onLanguageChange(e.target.value)}
+            style={{
+              background: '#1a1d2b',
+              color: '#e8eaf0',
+              border: '1px solid #2a2e42',
+              borderRadius: '6px',
+              padding: '5px 10px',
+              fontSize: '12px',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontWeight: 600,
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+          >
+            <option value="cpp">C++ (GCC)</option>
+            <option value="java">Java (OpenJDK)</option>
+            <option value="python">Python 3</option>
+            <option value="javascript">JavaScript (Node)</option>
+          </select>
 
-        {/* Right Toolbar: Format, Font, Minimap, Copy, Reset */}
-        <div className="flex items-center gap-1.5">
-          {/* Format Button */}
+          {/* Format */}
           <button
             onClick={handleFormatCode}
-            className="p-1.5 text-[#9aa0b8] hover:text-white hover:bg-[#1a1e2b] rounded transition-colors cursor-pointer"
+            style={{
+              background: '#1a1d2b',
+              border: '1px solid #2a2e42',
+              borderRadius: '6px',
+              padding: '5px 8px',
+              color: '#888d9f',
+              fontSize: '11px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
             title="Format Document (Shift + Option + F)"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" />
-            </svg>
+            Format
           </button>
 
-          {/* Font Size Selector */}
+          {/* Font size */}
           <select
             value={fontSize}
             onChange={(e) => setFontSize(Number(e.target.value))}
-            className="bg-[#1a1e2b] text-[#9aa0b8] border border-[#262b3d] rounded px-1.5 py-0.5 text-[11px] font-mono cursor-pointer outline-none"
+            style={{
+              background: '#1a1d2b',
+              color: '#888d9f',
+              border: '1px solid #2a2e42',
+              borderRadius: '6px',
+              padding: '4px 6px',
+              fontSize: '11px',
+              fontFamily: "'JetBrains Mono', monospace",
+              cursor: 'pointer',
+              outline: 'none'
+            }}
             title="Font Size"
           >
             <option value={12}>12px</option>
+            <option value={13}>13px</option>
             <option value={14}>14px</option>
             <option value={16}>16px</option>
-            <option value={18}>18px</option>
           </select>
 
-          {/* Minimap Toggle */}
+          {/* Minimap */}
           <button
             onClick={() => setMinimap(!minimap)}
-            className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer border ${
-              minimap
-                ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40'
-                : 'bg-[#1a1e2b] text-[#9aa0b8] border-[#262b3d]'
-            }`}
+            style={{
+              background: minimap ? 'rgba(108, 142, 247, 0.2)' : '#1a1d2b',
+              border: minimap ? '1px solid #6c8ef7' : '1px solid #2a2e42',
+              borderRadius: '6px',
+              padding: '4px 8px',
+              color: minimap ? '#6c8ef7' : '#888d9f',
+              fontSize: '11px',
+              cursor: 'pointer',
+              fontFamily: "'JetBrains Mono', monospace"
+            }}
             title="Toggle Minimap"
           >
             Map
           </button>
 
-          {/* Copy Code */}
+          {/* Copy */}
           <button
             onClick={handleCopyCode}
-            className="p-1.5 text-[#9aa0b8] hover:text-white hover:bg-[#1a1e2b] rounded transition-colors cursor-pointer"
+            style={{
+              background: '#1a1d2b',
+              border: '1px solid #2a2e42',
+              borderRadius: '6px',
+              padding: '4px 8px',
+              color: copied ? '#22c55e' : '#888d9f',
+              fontSize: '11px',
+              cursor: 'pointer'
+            }}
             title="Copy Code"
           >
-            {copied ? (
-              <span className="text-emerald-400 font-mono text-[10px] font-bold">✓</span>
-            ) : (
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            )}
+            {copied ? '✓' : 'Copy'}
           </button>
 
-          {/* Reset Template */}
+          {/* Reset */}
           <button
             onClick={handleResetCode}
-            className="p-1.5 text-[#9aa0b8] hover:text-red-400 hover:bg-red-500/10 rounded transition-colors cursor-pointer"
-            title="Reset Starter Code"
+            style={{
+              background: 'none',
+              border: '1px solid #2a2e42',
+              borderRadius: '6px',
+              padding: '4px 8px',
+              color: '#f87171',
+              fontSize: '11px',
+              cursor: 'pointer'
+            }}
+            title="Reset code to default template"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            Reset
+          </button>
+        </div>
+
+        {/* Right: AI Mentor, Run, Submit */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={onToggleAI}
+            style={{
+              padding: '5px 12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              border: aiMentorOpen ? '1px solid #a855f7' : '1px solid rgba(168, 85, 247, 0.3)',
+              background: aiMentorOpen ? 'rgba(168, 85, 247, 0.2)' : 'rgba(168, 85, 247, 0.1)',
+              color: '#c084fc',
+              transition: 'all 0.15s'
+            }}
+            title="Toggle In-Workspace AI Mentor"
+          >
+            <span>✨</span>
+            <span>AI Mentor</span>
+          </button>
+
+          <button
+            onClick={onRun}
+            disabled={isExecuting}
+            style={{
+              padding: '5px 14px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: isExecuting ? 'not-allowed' : 'pointer',
+              background: '#1a1d2b',
+              border: '1px solid #2a2e42',
+              color: '#e8eaf0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              opacity: isExecuting ? 0.6 : 1
+            }}
+            title="Run Code (Cmd/Ctrl + Enter)"
+          >
+            <span>▶</span>
+            <span>Run</span>
+          </button>
+
+          <button
+            onClick={onSubmit}
+            disabled={isExecuting}
+            style={{
+              padding: '5px 16px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: isExecuting ? 'not-allowed' : 'pointer',
+              background: '#6c8ef7',
+              border: 'none',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 10px rgba(108, 142, 247, 0.3)',
+              opacity: isExecuting ? 0.6 : 1
+            }}
+            title="Submit Solution (Cmd/Ctrl + Shift + Enter)"
+          >
+            <span>🚀</span>
+            <span>Submit</span>
           </button>
         </div>
       </div>
 
       {/* Draft Alert Banner */}
       {draftAlert && (
-        <div className="bg-amber-500/15 border-b border-amber-500/30 px-3 py-2 flex items-center justify-between text-xs animate-fade-in">
-          <div className="flex items-center gap-2 text-amber-300 font-sans">
-            <span>💾</span>
-            <span>{draftAlert.text}</span>
-          </div>
-          <div className="flex items-center gap-2">
+        <div style={{
+          background: 'rgba(245, 158, 11, 0.15)',
+          borderBottom: '1px solid rgba(245, 158, 11, 0.3)',
+          padding: '8px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '12px',
+          color: '#fcd34d'
+        }}>
+          <span>💾 {draftAlert.text}</span>
+          <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={handleApplyDraft}
-              className="px-2 py-0.5 rounded bg-amber-500 text-black font-semibold text-[11px] cursor-pointer"
+              style={{
+                padding: '3px 10px',
+                borderRadius: '4px',
+                background: '#f59e0b',
+                color: '#000',
+                fontSize: '11px',
+                fontWeight: 700,
+                border: 'none',
+                cursor: 'pointer'
+              }}
             >
               Restore Draft
             </button>
             <button
               onClick={handleDismissDraft}
-              className="text-[#9aa0b8] hover:text-white text-[11px] cursor-pointer"
+              style={{
+                padding: '3px 8px',
+                borderRadius: '4px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: '#e8eaf0',
+                fontSize: '11px',
+                border: 'none',
+                cursor: 'pointer'
+              }}
             >
               Dismiss
             </button>
@@ -265,34 +425,37 @@ export default function CodeEditor({
       )}
 
       {/* Monaco Container */}
-      <div className="flex-1 w-full overflow-hidden">
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
         <Editor
           height="100%"
           language={monacoLang}
           value={code}
-          onChange={(newVal) => {
-            const val = newVal || '';
-            onChange(val);
+          theme="codeblaze-dark"
+          onChange={(value) => {
+            const nextVal = value || '';
+            onChange(nextVal);
             if (problemId) {
-              localStorage.setItem(`cb_draft_${problemId}_${language}`, val);
+              localStorage.setItem(`cb_draft_${problemId}_${language}`, nextVal);
             }
           }}
           onMount={handleEditorDidMount}
-          theme="codeblaze-dark"
           options={{
-            fontSize,
-            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-            minimap: { enabled: minimap },
-            wordWrap,
-            automaticLayout: true,
-            scrollBeyondLastLine: false,
             readOnly,
-            lineNumbers: 'on',
-            renderLineHighlight: 'all',
+            fontSize,
+            fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, monospace",
+            fontLigatures: true,
             tabSize: 4,
+            minimap: { enabled: minimap },
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            lineNumbers: 'on',
+            lineNumbersMinChars: 3,
+            renderLineHighlight: 'all',
             cursorBlinking: 'smooth',
+            smoothScrolling: true,
             bracketPairColorization: { enabled: true },
-            guides: { bracketPairs: true, indentation: true }
+            wordWrap: 'on',
+            padding: { top: 12, bottom: 12 }
           }}
         />
       </div>

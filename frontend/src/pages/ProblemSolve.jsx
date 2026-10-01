@@ -252,130 +252,22 @@ export default function ProblemSolve() {
       minSize={30}
       maxSize={80}
       primary={
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#11131a', border: '1px solid #1e2230', borderRadius: '12px', overflow: 'hidden' }}>
-          {/* Editor Header Bar */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 12px',
-            height: '42px',
-            background: '#0d0e14',
-            borderBottom: '1px solid #1e2230',
-            flexShrink: 0
-          }}>
-            {/* Language Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <select
-                value={language}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                style={{
-                  background: '#1a1d2b',
-                  color: '#e8eaf0',
-                  border: '1px solid #2a2e42',
-                  borderRadius: '6px',
-                  padding: '5px 10px',
-                  fontSize: '12px',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
-              >
-                <option value="cpp">C++ (GCC)</option>
-                <option value="java">Java (OpenJDK)</option>
-                <option value="python">Python 3</option>
-                <option value="javascript">JavaScript (Node.js)</option>
-              </select>
-            </div>
-
-            {/* Run, Submit, AI Mentor Toggle */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                onClick={() => {
-                  setAutoTriggerAI(null);
-                  setAiMentorOpen(!aiMentorOpen);
-                }}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  border: aiMentorOpen ? '1px solid #a855f7' : '1px solid rgba(168, 85, 247, 0.3)',
-                  background: aiMentorOpen ? 'rgba(168, 85, 247, 0.2)' : 'rgba(168, 85, 247, 0.1)',
-                  color: '#c084fc',
-                  transition: 'all 0.15s'
-                }}
-                title="Toggle In-Workspace AI Mentor"
-              >
-                <span>✨</span>
-                <span>AI Mentor</span>
-              </button>
-
-              <button
-                onClick={handleRunCode}
-                disabled={isExecuting}
-                style={{
-                  padding: '5px 14px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: isExecuting ? 'not-allowed' : 'pointer',
-                  background: '#1a1d2b',
-                  border: '1px solid #2a2e42',
-                  color: '#e8eaf0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  opacity: isExecuting ? 0.6 : 1
-                }}
-                title="Run Code (Cmd/Ctrl + Enter)"
-              >
-                <span>▶</span>
-                <span>Run</span>
-              </button>
-
-              <button
-                onClick={handleSubmitCode}
-                disabled={isExecuting}
-                style={{
-                  padding: '5px 16px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: isExecuting ? 'not-allowed' : 'pointer',
-                  background: '#6c8ef7',
-                  border: 'none',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 2px 10px rgba(108, 142, 247, 0.3)',
-                  opacity: isExecuting ? 0.6 : 1
-                }}
-                title="Submit Solution (Cmd/Ctrl + Shift + Enter)"
-              >
-                <span>🚀</span>
-                <span>Submit</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Monaco Editor Component */}
-          <div style={{ flex: 1, overflow: 'hidden', background: '#0a0b0e' }}>
-            <CodeEditor
-              problemId={problem._id}
-              language={language}
-              code={code}
-              onChange={setCode}
-              onRun={handleRunCode}
-              onSubmit={handleSubmitCode}
-            />
-          </div>
+        <div style={{ height: '100%' }}>
+          <CodeEditor
+            problemId={problem._id}
+            language={language}
+            code={code}
+            onChange={setCode}
+            onRun={handleRunCode}
+            onSubmit={handleSubmitCode}
+            onLanguageChange={handleLanguageChange}
+            onToggleAI={() => {
+              setAutoTriggerAI(null);
+              setAiMentorOpen(!aiMentorOpen);
+            }}
+            aiMentorOpen={aiMentorOpen}
+            isExecuting={isExecuting}
+          />
         </div>
       }
       secondary={
