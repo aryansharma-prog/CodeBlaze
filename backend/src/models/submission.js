@@ -19,11 +19,11 @@ const submissionSchema = new Schema({
   language: {
     type: String,
     required: true,
-    enum: ['javascript', 'c++', 'java'],
+    enum: ['javascript', 'js', 'c++', 'cpp', 'java', 'python', 'py'],
   },
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'wrong', 'error'],
+    enum: ['pending', 'accepted', 'wrong', 'tle', 'error', 'compilation_error', 'runtime_error'],
     default: 'pending'
   },
   runtime: {
@@ -42,18 +42,28 @@ const submissionSchema = new Schema({
     type: Number,
     default: 0
   },
-  testCasesTotal: {  // Recommended addition
+  testCasesTotal: {
     type: Number,
     default: 0
-  }
+  },
+  testCaseResults: [{
+    testCaseIndex: Number,
+    passed: Boolean,
+    stdout: String,
+    expected: String,
+    stderr: String,
+    compile_output: String,
+    time: Number,
+    memory: Number,
+    status_id: Number
+  }]
 }, { 
   timestamps: true
 });
 
-//indexing --- efficient search ops
-submissionSchema.index({userId:1 , problemId:1});
+submissionSchema.index({ userId: 1, problemId: 1 });
+submissionSchema.index({ createdAt: -1 });
 
-
-const Submission = mongoose.model('submission',submissionSchema);
+const Submission = mongoose.model('submission', submissionSchema);
 
 module.exports = Submission;

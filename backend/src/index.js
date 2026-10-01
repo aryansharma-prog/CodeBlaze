@@ -10,6 +10,7 @@ const problemRouter = require("./routes/problemCreator");
 const submitRouter = require("./routes/submit");
 const videoRouter = require("./routes/videoCreator");
 const aiRouter = require("./routes/aiChatting");
+const assessmentRouter = require("./routes/assessmentRoutes");
 const cors = require("cors");
 
 const allowedOrigins = [
@@ -41,7 +42,7 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization", "Cookie", "X-Requested-With"]
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 // Root health check endpoint for Render & browser verification
@@ -58,24 +59,37 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Register Core Routers
 app.use("/user", authRouter);
+app.use("/auth", authRouter);
 app.use("/problem", problemRouter);
+app.use("/problems", problemRouter);
 app.use("/submission", submitRouter);
+app.use("/submissions", submitRouter);
 app.use("/ai", aiRouter);
 app.use("/video", videoRouter);
+app.use("/assessment", assessmentRouter);
+app.use("/recommendations", assessmentRouter); // Alias for direct access
+app.use("/progress", assessmentRouter); // Alias for direct access
 
 const initializeConnection = async () => {
     try {
-        await Promise.all([
-            main(process.env.DB_CONNECT_STRING),
-            redisClient.connect()
-        ]);
+        await main(process.env.DB_CONNECT_STRING);
+        console.log("✅ MongoDB Connected");
 
-        console.log("✅ MongoDB + Redis Connected");
+        // Attempt Redis connection without blocking startup on failure
+        try {
+            if (!redisClient.isOpen) {
+                await redisClient.connect();
+                console.log("✅ Redis Connected");
+            }
+        } catch (redisErr) {
+            console.warn("⚠️ Redis connection failed, running with in-memory fallbacks:", redisErr.message);
+        }
 
         const PORT = process.env.PORT || 4000;
         app.listen(PORT, () => {
-            console.log(`🚀 Server running on port ${PORT}`);
+            console.log(`🚀 CodeBlaze Backend running on port ${PORT}`);
         });
 
     } catch (err) {

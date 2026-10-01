@@ -1,107 +1,114 @@
 const mongoose = require('mongoose');
-const {Schema} = mongoose;
+const { Schema } = mongoose;
 
 const problemSchema = new Schema({
-    title:{
-        type:String,
-        required:true
+    problemNumber: {
+        type: Number,
+        index: true
     },
-    description:{
-        type:String,
-        required:true
+    title: {
+        type: String,
+        required: true,
+        trim: true
     },
-    difficulty:{
-        type:String,
-        enum:['easy','medium','hard'],
-        required:true,
+    slug: {
+        type: String,
+        trim: true,
+        lowercase: true
     },
-    tags:{
-        type:String,
-        enum:['array','linkedList','graph','dp'],
-        required:true
+    description: {
+        type: String,
+        required: true
     },
-    visibleTestCases:[
+    difficulty: {
+        type: String,
+        enum: ['easy', 'medium', 'hard'],
+        required: true,
+        lowercase: true
+    },
+    topic: {
+        type: String,
+        required: true,
+        lowercase: true,
+        index: true
+    },
+    subtopic: {
+        type: String,
+        trim: true,
+        index: true
+    },
+    concepts: [{
+        type: String,
+        trim: true
+    }],
+    tags: [{
+        type: String,
+        trim: true
+    }],
+    constraints: [{
+        type: String
+    }],
+    examples: [{
+        input: { type: String, required: true },
+        output: { type: String, required: true },
+        explanation: { type: String }
+    }],
+    visibleTestCases: [
         {
-            input:{
-                type:String,
-                required:true,
-            },
-            output:{
-                type:String,
-                required:true,
-            },
-            explanation:{
-                type:String,
-                required:true
-            }
+            input: { type: String, required: true },
+            output: { type: String, required: true },
+            explanation: { type: String }
         }
     ],
-
-    hiddenTestCases:[
+    hiddenTestCases: [
         {
-            input:{
-                type:String,
-                required:true,
-            },
-            output:{
-                type:String,
-                required:true,
-            }
+            input: { type: String, required: true },
+            output: { type: String, required: true }
         }
     ],
-
     startCode: [
         {
-            language:{
-                type:String,
-                required:true,
-            },
-            initialCode:{
-                type:String,
-                required:true
-            }
+            language: { type: String, required: true },
+            initialCode: { type: String, required: true }
         }
     ],
-
-    referenceSolution:[
+    referenceSolution: [
         {
-            language:{
-                type:String,
-                required:true,
-            },
-            completeCode:{
-                type:String,
-                required:true
-            }
+            language: { type: String, required: true },
+            completeCode: { type: String, required: true }
         }
     ],
-
-    problemCreator:{
+    hints: [{
+        type: String
+    }],
+    editorial: {
+        approach: { type: String },
+        timeComplexity: { type: String },
+        spaceComplexity: { type: String },
+        hints: [{ type: String }],
+        solutionCode: { type: String }
+    },
+    acceptance: {
+        submissionsCount: { type: Number, default: 0 },
+        acceptedCount: { type: Number, default: 0 },
+        rate: { type: Number, default: 65.0 }
+    },
+    expectedTimeMinutes: {
+        type: Number,
+        default: 20
+    },
+    problemCreator: {
         type: Schema.Types.ObjectId,
-        ref:'user',
-        required:true
+        ref: 'user'
     }
-})
+}, {
+    timestamps: true
+});
 
+// Composite index for fast searching and filtering
+problemSchema.index({ difficulty: 1, topic: 1, subtopic: 1 });
+problemSchema.index({ title: 'text', description: 'text', tags: 'text' });
 
-const Problem = mongoose.model('problem',problemSchema);
+const Problem = mongoose.model('problem', problemSchema);
 
 module.exports = Problem;
-
-
-
-
-// const referenceSolution = [
-//     {
-//         language:"c++",
-//         completeCode:"C++ Code"
-//     },
-//     {
-//         language:"java",
-//         completeCode:"java Code"
-//     },
-//     {
-//         language:"js",
-//         completeCode:"JS Code"
-//     },
-// ]

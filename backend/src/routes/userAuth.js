@@ -1,32 +1,36 @@
 const express = require('express');
-const {register,login,logout,adminRegister,getProfile,deleteProfile} = require("../controllers/userAuthent")
+const { register, login, logout, adminRegister, getProfile, deleteProfile } = require("../controllers/userAuthent");
 const userMiddleware = require('../middleware/userAuthentication');
 const adminMiddleware = require('../middleware/adminAuthentication');
-const authRouter =  express.Router();
+const authRouter = express.Router();
 
-// Register
+// Register & Login
 authRouter.post('/register', register);
 authRouter.post('/login', login);
-authRouter.post('/logout', userMiddleware, logout);
-authRouter.post('/admin/register', adminMiddleware ,adminRegister);
-authRouter.get('/getProfile',getProfile);
-authRouter.delete('/deleteProfile',userMiddleware,deleteProfile);
-authRouter.get('/check',userMiddleware, async (req,res)=>{
+authRouter.post('/logout', logout); // Open logout to always clear cookie
+authRouter.post('/admin/register', adminMiddleware, adminRegister);
+authRouter.get('/getProfile', getProfile);
+authRouter.delete('/deleteProfile', userMiddleware, deleteProfile);
 
-    const reply={
-        firstName:req.result.firstName,
-        emailId:req.result.emailId,
-        _id:req.result._id,
-        role:req.result.role
-    }
+// Check current session
+authRouter.get('/check', userMiddleware, async (req, res) => {
+    const user = req.result;
+    const reply = {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        emailId: user.emailId,
+        role: user.role,
+        problemSolved: user.problemSolved || [],
+        bookmarkedProblems: user.bookmarkedProblems || [],
+        streak: user.streak || 0
+    };
 
-    res.status(200).json({
-        user:reply,
-        message:"Valid User"
-    })
-})
-// login
-// logout
-// GetProfile
+    return res.status(200).json({
+        success: true,
+        user: reply,
+        message: "Valid User"
+    });
+});
+
 module.exports = authRouter;
-

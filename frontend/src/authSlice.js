@@ -6,6 +6,9 @@ export const registerUser = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const { data } = await axiosClient.post('/user/register', userData);
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
       return data.user;
     } catch (error) {
       const msg = error.response?.data?.message || error.response?.data || error.message || 'Registration failed';
@@ -19,6 +22,9 @@ export const loginUser = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const { data } = await axiosClient.post('/user/login', credentials);
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
       return data.user;
     } catch (error) {
       const msg = error.response?.data?.message || error.response?.data || error.message || 'Login failed';
@@ -34,6 +40,8 @@ export const checkAuth = createAsyncThunk(
       const { data } = await axiosClient.get('/user/check');
       return data.user;
     } catch (error) {
+      // Clear invalid token
+      localStorage.removeItem('token');
       const msg = error.response?.data?.message || error.response?.data || error.message || 'Authentication required';
       return rejectWithValue(msg);
     }
@@ -45,10 +53,11 @@ export const logoutUser = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       await axiosClient.post('/user/logout');
+      localStorage.removeItem('token');
       return null;
     } catch (error) {
-      const msg = error.response?.data?.message || error.response?.data || error.message || 'Logout failed';
-      return rejectWithValue(msg);
+      localStorage.removeItem('token');
+      return null;
     }
   }
 );
@@ -58,12 +67,21 @@ const authSlice = createSlice({
   initialState: {
     user: null,
     isAuthenticated: false,
-    loading: false,
+    loading: true, // start loading while checking session
     error: null
   },
   reducers: {
     clearAuthError: (state) => {
       state.error = null;
+    },
+    updateUserSolved: (state, action) => {
+      if (state.user) {
+        const problemId = action.payload;
+        if (!state.user.problemSolved) state.user.problemSolved = [];
+        if (!state.user.problemSolved.includes(problemId)) {
+          state.user.problemSolved.push(problemId);
+        }
+      }
     }
   },
   extraReducers: (builder) => {
@@ -114,30 +132,20 @@ const authSlice = createSlice({
       })
       .addCase(checkAuth.rejected, (state, action) => {
         state.loading = false;
-        state.error = typeof action.payload === 'string' ? action.payload : null;
+        state.error = null;
         state.isAuthenticated = false;
         state.user = null;
       })
   
       // Logout
-      .addCase(logoutUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
       .addCase(logoutUser.fulfilled, (state) => {
         state.loading = false;
         state.user = null;
         state.isAuthenticated = false;
         state.error = null;
-      })
-      .addCase(logoutUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = typeof action.payload === 'string' ? action.payload : 'Logout failed';
-        state.isAuthenticated = false;
-        state.user = null;
       });
   }
 });
 
-export const { clearAuthError } = authSlice.actions;
+export const { clearAuthError, updateUserSolved } = authSlice.actions;
 export default authSlice.reducer;

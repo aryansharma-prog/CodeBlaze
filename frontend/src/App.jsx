@@ -1,22 +1,34 @@
-import { Routes, Route, Navigate } from "react-router";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import Homepage from "./pages/Homepage";
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router';
 import { useDispatch, useSelector } from 'react-redux';
-import { checkAuth } from "./authSlice";
-import { useEffect } from "react";
-import AdminPanel from "./pages/AdminPanel";
-import ProblemSolve from "./pages/ProblemSolve";
-import UserDashboard from './pages/userDashboard';
-import DSATopics from './pages/DSATopics';
-import DSATopic from './pages/DSATopic';
-import AdminUpload from "./components/AdminUpload";
-import AdminVideo from "./components/AdminVideo";
+import { checkAuth } from './authSlice';
 
-/* ── Reusable admin guard ─────────────────────────────────────────────────── */
+// Pages
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Homepage from './pages/Homepage';
+import ProblemsPage from './pages/ProblemsPage';
+import ProblemSolve from './pages/ProblemSolve';
+import RecommendationsPage from './pages/RecommendationsPage';
+import ProgressPage from './pages/ProgressPage';
+import SubmissionsPage from './pages/SubmissionsPage';
+import ExplorePage from './pages/ExplorePage';
+import BookmarksPage from './pages/BookmarksPage';
+import UserProfilePage from './pages/UserProfilePage';
+import AdminPanel from './pages/AdminPanel';
+import AdminUpload from './components/AdminUpload';
+import AdminVideo from './components/AdminVideo';
+
+// Admin Guard
 const AdminRoute = ({ isAuthenticated, role, children }) => {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (role !== 'admin')  return <Navigate to="/" replace />;
+  if (role !== 'admin') return <Navigate to="/" replace />;
+  return children;
+};
+
+// Protected Route Guard
+const ProtectedRoute = ({ isAuthenticated, children }) => {
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return children;
 };
 
@@ -55,17 +67,23 @@ function App() {
   return (
     <Routes>
       {/* ── Public / Auth ── */}
-      <Route path="/"       element={isAuthenticated ? <Homepage />         : <Navigate to="/login" replace />} />
-      <Route path="/login"  element={isAuthenticated ? <Navigate to="/" replace />  : <Login />} />
-      <Route path="/signup" element={isAuthenticated ? <Navigate to="/" replace />  : <Signup />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/signup" element={isAuthenticated ? <Navigate to="/" replace /> : <Signup />} />
 
-      {/* ── Protected / Core App ── */}
-      <Route path="/problem/:id" element={isAuthenticated ? <ProblemSolve /> : <Navigate to="/login" replace />} />
-      <Route path="/profile"     element={isAuthenticated ? <UserDashboard /> : <Navigate to="/login" replace />} />
-      <Route path="/topics"      element={<DSATopics />} />
-      <Route path="/topics/:slug" element={<DSATopic />} />
+      {/* ── Core Platform Routes (Protected) ── */}
+      <Route path="/" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Homepage /></ProtectedRoute>} />
+      <Route path="/problems" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProblemsPage /></ProtectedRoute>} />
+      <Route path="/problem/:id" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProblemSolve /></ProtectedRoute>} />
+      <Route path="/problems/:id" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProblemSolve /></ProtectedRoute>} />
+      <Route path="/recommendations" element={<ProtectedRoute isAuthenticated={isAuthenticated}><RecommendationsPage /></ProtectedRoute>} />
+      <Route path="/progress" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProgressPage /></ProtectedRoute>} />
+      <Route path="/submissions" element={<ProtectedRoute isAuthenticated={isAuthenticated}><SubmissionsPage /></ProtectedRoute>} />
+      <Route path="/explore" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ExplorePage /></ProtectedRoute>} />
+      <Route path="/topics" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ExplorePage /></ProtectedRoute>} />
+      <Route path="/bookmarks" element={<ProtectedRoute isAuthenticated={isAuthenticated}><BookmarksPage /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute isAuthenticated={isAuthenticated}><UserProfilePage /></ProtectedRoute>} />
 
-      {/* ── Admin (protected) ── */}
+      {/* ── Admin Routes ── */}
       <Route path="/admin" element={
         <AdminRoute isAuthenticated={isAuthenticated} role={user?.role}>
           <AdminPanel />
@@ -82,7 +100,7 @@ function App() {
         </AdminRoute>
       } />
 
-      {/* ── Catch-all fallback ── */}
+      {/* ── Catch-all ── */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

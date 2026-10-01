@@ -1,48 +1,50 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
-const redisClient = require("../config/redisClient")
+const redisClient = require("../config/redisClient");
 
-const userMiddleware = async (req,res,next)=>{
+const userMiddleware = async (req, res, next) => {
+    try {
+        let token = req.cookies?.token;
 
-    try{
-
-        const {token} = req.cookies;
-        if(!token)
-            throw new Error("Token is not persent");
-
-        const payload = jwt.verify(token,process.env.JWT_KEY);
-
-        const {_id} = payload;
-        const {role} = payload;
-        console.log(role);
-
-
-        if(!_id){
-            throw new Error("Invalid token");
+        // Fallback to Bearer token in Authorization header
+        if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            token = req.headers.authorization.split(' ')[1];
         }
 
-        const result = await User.findById(_id);
-
-        if(!result){
-            throw new Error("User Doesn't Exist");
+        if (!token) {
+            return res.status(401).json({ success: false, message: "Authentication token missing" });
         }
 
-        // Redis ke blockList mein persent toh nahi hai
+        const payload = jwt.verify(token, process.env.JWT_KEY);
+        const { _id } = payload;
 
-        const IsBlocked = await redisClient.exists(`token:${token}`);
+        if (!_id) {
+            return res.status(401).json({ success: false, message: "Invalid token payload" });
+        }
 
-        if(IsBlocked)
-            throw new Error("Invalid Token");
+        const user = await User.findById(_id);
+        if (!user) {
+            return res.status(401).json({ success: false, message: "User does not exist" });
+        }
 
-        req.result = result;
+        // Check if token is blacklisted in Redis (with graceful try-catch if Redis is offline)
+        try {
+            if (redisClient.isOpen) {
+                const isBlocked = await redisClient.exists(`token:${token}`);
+                if (isBlocked) {
+                    return res.status(401).json({ success: false, message: "Session expired, please log in again" });
+                }
+            }
+        } catch (redisErr) {
+            console.warn('[userMiddleware] Redis check bypassed:', redisErr.message);
+        }
 
-
+        req.result = user;
+        req.user = user;
         next();
+    } catch (err) {
+        return res.status(401).json({ success: false, message: "Unauthorized: " + err.message });
     }
-    catch(err){
-        res.status(401).send("Error: "+ err.message)
-    }
-
-}
+};
 
 module.exports = userMiddleware;

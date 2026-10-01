@@ -1,53 +1,71 @@
 const mongoose = require('mongoose');
-const {Schema} = mongoose;
+const { Schema } = mongoose;
 
 const userSchema = new Schema({
-    firstName:{
+    firstName: {
         type: String,
         required: true,
-        minLength:3,
-        maxLength:20
+        minLength: 2,
+        maxLength: 30,
+        trim: true
     },
-    lastName:{
-        type:String,
-        minLength:3,
-        maxLength:20,
+    lastName: {
+        type: String,
+        maxLength: 30,
+        trim: true
     },
-    emailId:{
-        type:String,
-        required:true,
-        unique:true,
+    emailId: {
+        type: String,
+        required: true,
+        unique: true,
         trim: true,
-        lowercase:true,
-        immutable: true,
+        lowercase: true,
+        immutable: true
     },
-    age:{
-        type:Number,
-        min:6,
-        max:80,
+    age: {
+        type: Number,
+        min: 6,
+        max: 100
     },
-    role:{
-        type:String,
-        enum:['user','admin'],
+    role: {
+        type: String,
+        enum: ['user', 'admin'],
         default: 'user'
     },
- // User model — update problemSolved field
-problemSolved: {
-  type: [{
-    type: Schema.Types.ObjectId,
-    ref: 'problem'    // keep lowercase to match your mongoose.model()
-  }],
-  default: []         // ← ADD THIS, remove unique:true from array field
-},
-    password:{
-        type:String,
+    problemSolved: [{
+        type: Schema.Types.ObjectId,
+        ref: 'problem'
+    }],
+    bookmarkedProblems: [{
+        type: Schema.Types.ObjectId,
+        ref: 'problem'
+    }],
+    streak: {
+        type: Number,
+        default: 0
+    },
+    lastSolvedDate: {
+        type: Date
+    },
+    topicPerformance: [{
+        topic: { type: String, required: true },
+        score: { type: Number, default: 0 },
+        status: { type: String, enum: ['weak', 'needs-practice', 'good', 'strong'], default: 'needs-practice' },
+        solvedCount: { type: Number, default: 0 },
+        attemptCount: { type: Number, default: 0 },
+        weakSubtopics: [String],
+        strongSubtopics: [String],
+        lastTestedAt: { type: Date, default: Date.now }
+    }],
+    password: {
+        type: String,
         required: true
     }
-},{
-    timestamps:true
+}, {
+    timestamps: true
 });
 
-
-const User = mongoose.model("user",userSchema);
+// userSchema index handled by unique: true on emailId
+const User = mongoose.model("user", userSchema);
 
 module.exports = User;
