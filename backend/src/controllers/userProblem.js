@@ -19,19 +19,23 @@ const getAllProblem = async (req, res) => {
       page = 1,
       limit = 50,
       sortBy = 'problemNumber',
-      order = 'asc'
+      order = 'asc',
+      q
     } = req.query;
 
     const query = {};
+
+    const searchParam = search || q || '';
 
     // Difficulty filter
     if (difficulty && difficulty !== 'all') {
       query.difficulty = difficulty.toLowerCase();
     }
 
-    // Topic filter
+    // Topic filter (matches topic or tags flexibly)
     if (topic && topic !== 'all') {
-      query.topic = topic.toLowerCase();
+      const topicRegex = new RegExp(topic, 'i');
+      query.$or = [{ topic: topicRegex }, { tags: topicRegex }, { subtopic: topicRegex }];
     }
 
     // Subtopic filter
@@ -39,17 +43,25 @@ const getAllProblem = async (req, res) => {
       query.subtopic = new RegExp(subtopic, 'i');
     }
 
-    // Search query (title, topic, subtopic, tags, description)
-    if (search && search.trim()) {
-      const term = search.trim();
-      query.$or = [
-        { title: new RegExp(term, 'i') },
-        { topic: new RegExp(term, 'i') },
-        { subtopic: new RegExp(term, 'i') },
-        { tags: new RegExp(term, 'i') }
+    // Search query (title, topic, subtopic, tags, problemNumber)
+    if (searchParam && searchParam.trim()) {
+      const term = searchParam.trim();
+      const termRegex = new RegExp(term, 'i');
+      const searchConditions = [
+        { title: termRegex },
+        { topic: termRegex },
+        { subtopic: termRegex },
+        { tags: termRegex }
       ];
       if (!isNaN(term)) {
-        query.$or.push({ problemNumber: Number(term) });
+        searchConditions.push({ problemNumber: Number(term) });
+      }
+
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+        delete query.$or;
+      } else {
+        query.$or = searchConditions;
       }
     }
 

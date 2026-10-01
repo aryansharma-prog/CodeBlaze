@@ -12,7 +12,6 @@ export default function ProblemDescriptionPanel({
   const [activeTab, setActiveTab] = useState('description');
   const [noteContent, setNoteContent] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
-  const [showEditorialSolution, setShowEditorialSolution] = useState(false);
   const [openHintIndex, setOpenHintIndex] = useState(null);
 
   // Load Note
@@ -49,16 +48,90 @@ export default function ProblemDescriptionPanel({
 
   const difficulty = (problem.difficulty || 'easy').toLowerCase();
   const getDiffBadge = () => {
-    if (difficulty === 'easy') return <span className="badge-easy px-2.5 py-1 rounded-md text-xs font-mono font-bold uppercase">Easy</span>;
-    if (difficulty === 'medium') return <span className="badge-medium px-2.5 py-1 rounded-md text-xs font-mono font-bold uppercase">Medium</span>;
-    return <span className="badge-hard px-2.5 py-1 rounded-md text-xs font-mono font-bold uppercase">Hard</span>;
+    if (difficulty === 'easy') {
+      return (
+        <span style={{
+          padding: '3px 8px',
+          borderRadius: '5px',
+          background: 'rgba(34, 197, 94, 0.12)',
+          color: '#22c55e',
+          border: '1px solid rgba(34, 197, 94, 0.3)',
+          fontSize: '11px',
+          fontWeight: 700,
+          fontFamily: "'JetBrains Mono', monospace"
+        }}>
+          Easy
+        </span>
+      );
+    }
+    if (difficulty === 'medium') {
+      return (
+        <span style={{
+          padding: '3px 8px',
+          borderRadius: '5px',
+          background: 'rgba(245, 158, 11, 0.12)',
+          color: '#f59e0b',
+          border: '1px solid rgba(245, 158, 11, 0.3)',
+          fontSize: '11px',
+          fontWeight: 700,
+          fontFamily: "'JetBrains Mono', monospace"
+        }}>
+          Medium
+        </span>
+      );
+    }
+    return (
+      <span style={{
+        padding: '3px 8px',
+        borderRadius: '5px',
+        background: 'rgba(239, 68, 68, 0.12)',
+        color: '#ef4444',
+        border: '1px solid rgba(239, 68, 68, 0.3)',
+        fontSize: '11px',
+        fontWeight: 700,
+        fontFamily: "'JetBrains Mono', monospace"
+      }}>
+        Hard
+      </span>
+    );
   };
 
+  // Resolve examples from problem.examples OR problem.visibleTestCases
+  const examplesList = (problem.examples && problem.examples.length > 0)
+    ? problem.examples
+    : (problem.visibleTestCases && problem.visibleTestCases.length > 0)
+      ? problem.visibleTestCases.map(tc => ({
+          input: tc.input,
+          output: tc.output,
+          explanation: tc.explanation || ''
+        }))
+      : [];
+
+  const topicName = problem.topic || (Array.isArray(problem.tags) ? problem.tags[0] : problem.tags) || 'General';
+
   return (
-    <div className="flex flex-col h-full bg-[#0e1017] border border-[#262b3d] rounded-xl overflow-hidden font-sans">
-      {/* Tab Navigation */}
-      <div className="flex items-center justify-between px-3 h-10 bg-[#131620] border-b border-[#262b3d] flex-shrink-0">
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      background: '#11131a',
+      border: '1px solid #1e2230',
+      borderRadius: '12px',
+      overflow: 'hidden',
+      fontFamily: "'Syne', -apple-system, sans-serif"
+    }}>
+      {/* Tab Navigation Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 12px',
+        height: '42px',
+        background: '#0d0e14',
+        borderBottom: '1px solid #1e2230',
+        flexShrink: 0
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflowX: 'auto' }}>
           {[
             { id: 'description', label: 'Description', icon: '📄' },
             { id: 'editorial', label: 'Editorial', icon: '💡' },
@@ -68,11 +141,21 @@ export default function ProblemDescriptionPanel({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1 rounded-md text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30'
-                  : 'text-[#9aa0b8] hover:text-white hover:bg-[#1a1e2b]'
-              }`}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s',
+                border: activeTab === tab.id ? '1px solid rgba(108, 142, 247, 0.3)' : '1px solid transparent',
+                background: activeTab === tab.id ? 'rgba(108, 142, 247, 0.12)' : 'transparent',
+                color: activeTab === tab.id ? '#6c8ef7' : '#888d9f'
+              }}
             >
               <span>{tab.icon}</span>
               <span>{tab.label}</span>
@@ -83,89 +166,139 @@ export default function ProblemDescriptionPanel({
         {/* Action: Bookmark */}
         <button
           onClick={onToggleBookmark}
-          className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-            isBookmarked
-              ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-              : 'bg-[#1a1e2b] border-[#262b3d] text-[#5e6480] hover:text-white'
-          }`}
+          style={{
+            padding: '5px 10px',
+            borderRadius: '6px',
+            background: isBookmarked ? 'rgba(108, 142, 247, 0.15)' : '#1a1d2b',
+            border: isBookmarked ? '1px solid rgba(108, 142, 247, 0.3)' : '1px solid #2a2e42',
+            color: isBookmarked ? '#6c8ef7' : '#888d9f',
+            fontSize: '12px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}
           title={isBookmarked ? "Remove Bookmark" : "Save Bookmark"}
         >
-          <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-          </svg>
+          <span>{isBookmarked ? '★' : '☆'}</span>
+          <span style={{ fontSize: '11px' }}>{isBookmarked ? 'Saved' : 'Save'}</span>
         </button>
       </div>
 
       {/* Tab Body */}
-      <div className="flex-1 overflow-y-auto p-5 scrollbar-thin text-xs text-[#9aa0b8] leading-relaxed">
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px', fontSize: '13px', color: '#a0a5ba', lineHeight: 1.6 }}>
         {activeTab === 'description' && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Header: Title, Number, Difficulty, Stats */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Header: Title, Number, Difficulty, Tags */}
             <div>
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <span className="font-mono text-xs text-[#5e6480] font-bold">
-                  #{problem.problemNumber || '1'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', color: '#555870', fontWeight: 700 }}>
+                  #{String(problem.problemNumber || 1).padStart(3, '0')}
                 </span>
-                <h1 className="text-lg font-bold text-white tracking-tight">
+                <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#e8eaf0', letterSpacing: '-0.3px', margin: 0 }}>
                   {problem.title}
                 </h1>
                 {isSolved && (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-[10px] font-bold flex items-center gap-1">
+                  <span style={{
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    background: 'rgba(34, 197, 94, 0.12)',
+                    color: '#22c55e',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    fontFamily: "'JetBrains Mono', monospace"
+                  }}>
                     ✓ Solved
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2.5 flex-wrap pt-1">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 {getDiffBadge()}
 
-                <span className="px-2 py-0.5 rounded bg-[#1a1e2b] text-[#9aa0b8] border border-[#262b3d] text-[11px] font-mono capitalize">
-                  {problem.topic}
+                <span style={{
+                  padding: '2px 8px',
+                  borderRadius: '5px',
+                  background: '#1a1d2b',
+                  border: '1px solid #262b3d',
+                  color: '#888d9f',
+                  fontSize: '11px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  textTransform: 'capitalize'
+                }}>
+                  {topicName}
                 </span>
 
                 {problem.subtopic && (
-                  <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 text-[11px] font-mono">
+                  <span style={{
+                    padding: '2px 8px',
+                    borderRadius: '5px',
+                    background: 'rgba(108, 142, 247, 0.08)',
+                    border: '1px solid rgba(108, 142, 247, 0.2)',
+                    color: '#6c8ef7',
+                    fontSize: '11px',
+                    fontFamily: "'JetBrains Mono', monospace"
+                  }}>
                     {problem.subtopic}
                   </span>
                 )}
 
-                <span className="text-[11px] font-mono text-[#5e6480]">
-                  Acceptance: {problem.acceptance?.rate || '52.4'}%
+                <span style={{ fontSize: '11px', color: '#555870', fontFamily: "'JetBrains Mono', monospace" }}>
+                  Acceptance: {problem.acceptance?.rate ? `${problem.acceptance.rate}%` : '52.4%'}
                 </span>
               </div>
             </div>
 
             {/* Description Text */}
-            <div className="prose prose-invert max-w-none text-xs text-[#ced3e8] leading-relaxed whitespace-pre-wrap font-sans">
+            <div style={{ color: '#d0d4e4', fontSize: '13.5px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
               {problem.description}
             </div>
 
-            {/* Examples */}
-            {problem.examples && problem.examples.length > 0 && (
-              <div className="space-y-3">
-                <div className="text-[11px] font-mono font-bold text-[#5e6480] uppercase tracking-wider">
+            {/* Examples Section */}
+            {examplesList.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#555870', letterSpacing: '0.6px', fontFamily: "'JetBrains Mono', monospace" }}>
                   Examples
                 </div>
-                {problem.examples.map((ex, idx) => (
-                  <div key={idx} className="bg-[#131620] border border-[#262b3d] rounded-xl p-3.5 space-y-2 font-mono text-xs">
-                    <div className="text-[10px] text-[#5e6480] font-bold uppercase tracking-wider">
+
+                {examplesList.map((ex, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: '#0d0e14',
+                      border: '1px solid #1e2230',
+                      borderRadius: '10px',
+                      padding: '14px 16px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#6c8ef7', textTransform: 'uppercase' }}>
                       Example {idx + 1}:
                     </div>
-                    <div className="flex gap-2">
-                      <span className="text-[#5e6480] w-16 flex-shrink-0">Input:</span>
-                      <span className="text-white bg-[#0e1017] px-2 py-0.5 rounded border border-[#1c202e] flex-1 break-all">
+
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <span style={{ color: '#555870', width: '56px', flexShrink: 0 }}>Input:</span>
+                      <span style={{ color: '#e8eaf0', background: '#131620', padding: '2px 8px', borderRadius: '4px', border: '1px solid #202434', flex: 1, wordBreak: 'break-word' }}>
                         {ex.input}
                       </span>
                     </div>
-                    <div className="flex gap-2">
-                      <span className="text-[#5e6480] w-16 flex-shrink-0">Output:</span>
-                      <span className="text-emerald-400 bg-[#0e1017] px-2 py-0.5 rounded border border-[#1c202e] flex-1 break-all">
+
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <span style={{ color: '#555870', width: '56px', flexShrink: 0 }}>Output:</span>
+                      <span style={{ color: '#22c55e', background: '#131620', padding: '2px 8px', borderRadius: '4px', border: '1px solid #202434', flex: 1, wordBreak: 'break-word' }}>
                         {ex.output}
                       </span>
                     </div>
+
                     {ex.explanation && (
-                      <div className="flex gap-2 text-[#9aa0b8] text-[11px] pt-1">
-                        <span className="text-[#5e6480] w-16 flex-shrink-0">Note:</span>
+                      <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#888d9f', paddingTop: '2px' }}>
+                        <span style={{ color: '#555870', width: '56px', flexShrink: 0 }}>Explain:</span>
                         <span>{ex.explanation}</span>
                       </div>
                     )}
@@ -175,36 +308,52 @@ export default function ProblemDescriptionPanel({
             )}
 
             {/* Constraints */}
-            {problem.constraints && problem.constraints.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-[11px] font-mono font-bold text-[#5e6480] uppercase tracking-wider">
-                  Constraints
-                </div>
-                <ul className="list-disc pl-5 space-y-1 font-mono text-xs text-[#9aa0b8]">
-                  {problem.constraints.map((c, i) => (
-                    <li key={i}>{c}</li>
-                  ))}
-                </ul>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#555870', letterSpacing: '0.6px', fontFamily: "'JetBrains Mono', monospace" }}>
+                Constraints & Limits
               </div>
-            )}
+              <ul style={{ margin: 0, paddingLeft: '18px', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#888d9f', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {problem.constraints && problem.constraints.length > 0 ? (
+                  problem.constraints.map((c, i) => <li key={i}>{c}</li>)
+                ) : (
+                  <>
+                    <li>1 ≤ Array length / Input magnitude ≤ 10⁵</li>
+                    <li>Time Limit: 1000 ms</li>
+                    <li>Memory Limit: 256 MB</li>
+                  </>
+                )}
+              </ul>
+            </div>
 
-            {/* Hints Section */}
+            {/* Hints Accordion */}
             {problem.hints && problem.hints.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-[#262b3d]">
-                <div className="text-[11px] font-mono font-bold text-[#5e6480] uppercase tracking-wider">
-                  Hints & Insights
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #1e2230', paddingTop: '16px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#555870', letterSpacing: '0.6px', fontFamily: "'JetBrains Mono', monospace" }}>
+                  💡 Hints & Insights
                 </div>
                 {problem.hints.map((hint, i) => (
-                  <div key={i} className="bg-[#131620] border border-[#262b3d] rounded-xl overflow-hidden">
+                  <div key={i} style={{ background: '#0d0e14', border: '1px solid #1e2230', borderRadius: '8px', overflow: 'hidden' }}>
                     <button
                       onClick={() => setOpenHintIndex(openHintIndex === i ? null : i)}
-                      className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs text-[#9aa0b8] hover:text-white text-left cursor-pointer bg-transparent border-none"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: 'none',
+                        border: 'none',
+                        color: '#a0a5ba',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
                     >
-                      <span className="font-semibold">Hint {i + 1}</span>
-                      <span className="text-xs text-[#5e6480]">{openHintIndex === i ? '▲' : '▼'}</span>
+                      <span>Hint {i + 1}</span>
+                      <span style={{ fontSize: '11px', color: '#555870' }}>{openHintIndex === i ? '▲' : '▼'}</span>
                     </button>
                     {openHintIndex === i && (
-                      <div className="px-3.5 pb-3 text-xs text-[#ced3e8] border-t border-[#1c202e] pt-2 font-sans">
+                      <div style={{ padding: '10px 14px', borderTop: '1px solid #181b26', fontSize: '12px', color: '#ced3e8', lineHeight: 1.5 }}>
                         {hint}
                       </div>
                     )}
@@ -217,115 +366,133 @@ export default function ProblemDescriptionPanel({
 
         {/* Tab: Editorial */}
         {activeTab === 'editorial' && (
-          <div className="space-y-5 animate-fade-in">
-            <div className="bg-[#131620] border border-[#262b3d] rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm text-white">Approach & Complexity Analysis</h3>
-                <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono text-[10px] border border-indigo-500/20">
-                  Official Editorial
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ background: '#0d0e14', border: '1px solid #1e2230', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#e8eaf0', margin: 0 }}>Approach & Complexity Analysis</h3>
+                <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(108, 142, 247, 0.12)', color: '#6c8ef7', border: '1px solid rgba(108, 142, 247, 0.25)', fontFamily: "'JetBrains Mono', monospace" }}>
+                  Official Approach
                 </span>
               </div>
-              <p className="text-xs text-[#ced3e8] leading-relaxed">
-                {problem.editorial?.approach || "This problem can be solved by recognizing the optimal data structure to minimize redundant searches."}
+
+              <p style={{ fontSize: '13px', color: '#d0d4e4', lineHeight: 1.6, margin: 0 }}>
+                {problem.editorial?.approach || "This problem can be efficiently solved by utilizing optimal algorithmic structures to reduce redundant operations."}
               </p>
 
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div className="bg-[#0e1017] p-3 rounded-lg border border-[#1c202e]">
-                  <div className="text-[10px] font-mono text-[#5e6480] uppercase">Time Complexity</div>
-                  <div className="font-mono text-xs font-bold text-emerald-400 mt-1">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
+                <div style={{ background: '#131620', padding: '12px', borderRadius: '8px', border: '1px solid #202434' }}>
+                  <div style={{ fontSize: '10px', color: '#555870', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>Time Complexity</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#22c55e', marginTop: '2px', fontFamily: "'JetBrains Mono', monospace" }}>
                     {problem.editorial?.timeComplexity || "O(n)"}
                   </div>
                 </div>
-                <div className="bg-[#0e1017] p-3 rounded-lg border border-[#1c202e]">
-                  <div className="text-[10px] font-mono text-[#5e6480] uppercase">Space Complexity</div>
-                  <div className="font-mono text-xs font-bold text-indigo-400 mt-1">
-                    {problem.editorial?.spaceComplexity || "O(n) or O(1)"}
+
+                <div style={{ background: '#131620', padding: '12px', borderRadius: '8px', border: '1px solid #202434' }}>
+                  <div style={{ fontSize: '10px', color: '#555870', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>Space Complexity</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#6c8ef7', marginTop: '2px', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {problem.editorial?.spaceComplexity || "O(1)"}
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Reveal Solution toggle */}
-            <div className="bg-[#131620] border border-[#262b3d] rounded-xl p-4 text-center space-y-3">
-              <div className="text-xs text-[#9aa0b8]">
-                {showEditorialSolution ? "Reference Solution" : "Try solving the problem first before viewing the full solution code."}
-              </div>
-              <button
-                onClick={() => setShowEditorialSolution(!showEditorialSolution)}
-                className="btn-secondary text-xs py-1.5 px-4"
-              >
-                {showEditorialSolution ? "Hide Solution" : "Reveal Reference Solution"}
-              </button>
-
-              {showEditorialSolution && problem.referenceSolution && (
-                <div className="text-left mt-4 animate-fade-in">
-                  <div className="bg-[#0e1017] p-3.5 rounded-lg border border-[#262b3d] font-mono text-xs text-[#f1f3f9] overflow-x-auto whitespace-pre">
-                    {problem.referenceSolution[0]?.completeCode || "// Reference solution"}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
 
         {/* Tab: Submissions */}
         {activeTab === 'submissions' && (
-          <div className="space-y-3 animate-fade-in">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ fontSize: '12px', color: '#7a8099', marginBottom: '4px' }}>
+              Your past execution attempts and submissions for this problem:
+            </div>
+
             {submissions.length === 0 ? (
-              <div className="py-12 text-center text-xs text-[#5e6480] font-mono">
-                No past submissions yet for this problem. Run and submit your solution!
+              <div style={{ padding: '32px', textAlign: 'center', background: '#0d0e14', borderRadius: '10px', border: '1px solid #1e2230', color: '#7a8099' }}>
+                No submissions recorded yet. Write your code and press Submit!
               </div>
             ) : (
-              submissions.map((sub) => {
-                const isAcc = sub.status === 'accepted';
-                return (
-                  <div
-                    key={sub._id}
-                    onClick={() => onSelectSubmission(sub)}
-                    className="flex items-center justify-between p-3 rounded-xl bg-[#131620] hover:bg-[#1a1e2b] border border-[#262b3d] cursor-pointer transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`font-mono text-xs font-bold ${isAcc ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {isAcc ? '✓ Accepted' : '✗ ' + (sub.status.toUpperCase())}
-                      </span>
-                      <span className="text-[11px] font-mono text-[#5e6480] capitalize">
-                        {sub.language}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs font-mono text-[#5e6480]">
-                      <span>{sub.runtime} ms</span>
-                      <span>{new Date(sub.createdAt).toLocaleDateString()}</span>
-                      <span className="text-indigo-400 group-hover:underline">View Code</span>
+              submissions.map((sub, idx) => (
+                <div
+                  key={sub._id || idx}
+                  onClick={() => onSelectSubmission(sub)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 14px',
+                    background: '#0d0e14',
+                    border: '1px solid #1e2230',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.15s'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#2e334a')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2230')}
+                >
+                  <div>
+                    <span style={{
+                      fontWeight: 700,
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '12px',
+                      color: sub.status?.toLowerCase().includes('accepted') ? '#22c55e' : '#ef4444'
+                    }}>
+                      {sub.status || 'Submitted'}
+                    </span>
+                    <div style={{ fontSize: '11px', color: '#555870', marginTop: '2px' }}>
+                      {sub.language?.toUpperCase()} • {sub.runtime ? `${sub.runtime}ms` : '—'}
                     </div>
                   </div>
-                );
-              })
+
+                  <span style={{ color: '#6c8ef7', fontSize: '12px', fontWeight: 600 }}>View Code →</span>
+                </div>
+              ))
             )}
           </div>
         )}
 
         {/* Tab: Notes */}
         {activeTab === 'notes' && (
-          <div className="space-y-3 animate-fade-in flex flex-col h-full">
-            <div className="text-xs text-[#9aa0b8]">
-              Personal notes and insights for this problem. Notes are saved to your account.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+            <div style={{ fontSize: '12px', color: '#7a8099' }}>
+              Personal notes and takeaways (saved to your account):
             </div>
+
             <textarea
               value={noteContent}
               onChange={(e) => setNoteContent(e.target.value)}
-              placeholder="Jot down algorithmic insights, edge case reminders, or alternative approaches..."
-              className="w-full h-64 p-3 bg-[#131620] border border-[#262b3d] focus:border-indigo-500 rounded-xl text-xs text-white font-mono outline-none resize-none placeholder-[#5e6480]"
+              placeholder="Record your thoughts, edge cases, or intuition here..."
+              style={{
+                width: '100%',
+                flex: 1,
+                minHeight: '200px',
+                background: '#0d0e14',
+                border: '1px solid #1e2230',
+                borderRadius: '8px',
+                padding: '12px',
+                color: '#e8eaf0',
+                fontSize: '13px',
+                fontFamily: "'Syne', sans-serif",
+                outline: 'none',
+                resize: 'none'
+              }}
             />
-            <div className="flex items-center justify-between">
-              <span className={`text-xs font-mono text-emerald-400 transition-opacity ${noteSaved ? 'opacity-100' : 'opacity-0'}`}>
-                ✓ Note saved
-              </span>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <button
                 onClick={handleSaveNote}
-                className="btn-primary text-xs py-1.5 px-4"
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  background: '#6c8ef7',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
               >
-                Save Note
+                Save Notes
               </button>
+              {noteSaved && <span style={{ color: '#22c55e', fontSize: '12px', fontWeight: 600 }}>✓ Notes Saved</span>}
             </div>
           </div>
         )}

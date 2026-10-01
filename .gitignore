@@ -28,3 +28,9 @@ pnpm-debug.log*
 .vscode/
 .idea/
 Thumbs.db
+
+# Local Database & Cache
+backend/data/
+data/
+*.wt
+WiredTiger*

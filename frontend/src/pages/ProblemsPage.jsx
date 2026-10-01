@@ -1,50 +1,54 @@
-import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router';
+import React, { useState, useEffect, useMemo } from 'react';
+import { NavLink, useNavigate, useSearchParams } from 'react-router';
 import { useSelector } from 'react-redux';
 import axiosClient from '../utils/axiosClient';
 import Navbar from '../components/Navbar';
 
 const TOPIC_LIST = [
-  { id: 'all', label: 'All Topics' },
-  { id: 'arrays', label: 'Arrays' },
-  { id: 'strings', label: 'Strings' },
-  { id: 'hashing', label: 'Hashing' },
-  { id: 'two-pointers', label: 'Two Pointers' },
-  { id: 'sliding-window', label: 'Sliding Window' },
-  { id: 'stack', label: 'Stack' },
-  { id: 'queue', label: 'Queue' },
-  { id: 'linked-list', label: 'Linked List' },
-  { id: 'binary-search', label: 'Binary Search' },
-  { id: 'recursion', label: 'Recursion' },
-  { id: 'backtracking', label: 'Backtracking' },
-  { id: 'trees', label: 'Trees' },
-  { id: 'bst', label: 'BST' },
-  { id: 'heap', label: 'Heap' },
-  { id: 'greedy', label: 'Greedy' },
-  { id: 'graphs', label: 'Graphs' },
-  { id: 'dp', label: 'Dynamic Programming' },
-  { id: 'bit-manipulation', label: 'Bit Manipulation' },
-  { id: 'trie', label: 'Trie' },
-  { id: 'union-find', label: 'Union Find' }
+  { id: 'all', label: 'All Topics', icon: '🌐' },
+  { id: 'arrays', label: 'Arrays', icon: '📊' },
+  { id: 'strings', label: 'Strings', icon: '🔤' },
+  { id: 'hashing', label: 'Hashing', icon: '🗝️' },
+  { id: 'two-pointers', label: 'Two Pointers', icon: '👉👈' },
+  { id: 'sliding-window', label: 'Sliding Window', icon: '🪟' },
+  { id: 'stack', label: 'Stack', icon: '🥞' },
+  { id: 'queue', label: 'Queue', icon: '🚶' },
+  { id: 'linked-list', label: 'Linked List', icon: '🔗' },
+  { id: 'binary-search', label: 'Binary Search', icon: '🔍' },
+  { id: 'recursion', label: 'Recursion', icon: '🌀' },
+  { id: 'backtracking', label: 'Backtracking', icon: '🌲' },
+  { id: 'trees', label: 'Trees', icon: '🌳' },
+  { id: 'bst', label: 'BST', icon: '⚖️' },
+  { id: 'heap', label: 'Heap', icon: '🏔️' },
+  { id: 'greedy', label: 'Greedy', icon: '🎯' },
+  { id: 'graphs', label: 'Graphs', icon: '🕸️' },
+  { id: 'dp', label: 'Dynamic Programming', icon: '⚡' },
+  { id: 'bit-manipulation', label: 'Bit Manipulation', icon: '0️⃣1️⃣' },
+  { id: 'trie', label: 'Trie', icon: '🔤' },
+  { id: 'union-find', label: 'Union Find', icon: '🧩' }
 ];
 
 export default function ProblemsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
 
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalProblems, setTotalProblems] = useState(0);
 
-  // Filter States
-  const [search, setSearch] = useState('');
-  const [difficulty, setDifficulty] = useState('all');
-  const [topic, setTopic] = useState('all');
+  // Filter States initialized from URL params if present
+  const [search, setSearch] = useState(searchParams.get('q') || searchParams.get('search') || '');
+  const [difficulty, setDifficulty] = useState(searchParams.get('difficulty') || 'all');
+  const [topic, setTopic] = useState(searchParams.get('topic') || 'all');
   const [status, setStatus] = useState('all');
   const [sortBy, setSortBy] = useState('problemNumber');
   const [order, setOrder] = useState('asc');
   const [page, setPage] = useState(1);
   const limit = 25;
+
+  // Bookmarks cache
+  const [bookmarkedIds, setBookmarkedIds] = useState(new Set(user?.bookmarkedProblems || []));
 
   const fetchProblems = async () => {
     setLoading(true);
@@ -60,10 +64,11 @@ export default function ProblemsPage() {
       if (topic !== 'all') params.append('topic', topic);
       if (status !== 'all') params.append('status', status);
 
-      const { data } = await axiosClient.get(`/problem/getAllProblem?${params.toString()}`);
-      if (data && data.data) {
-        setProblems(data.data);
-        setTotalProblems(data.total || 0);
+      const res = await axiosClient.get(`/problem/getAllProblem?${params.toString()}`);
+      if (res.data) {
+        const pList = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+        setProblems(pList.filter(Boolean));
+        setTotalProblems(res.data.total || pList.length);
       }
     } catch (err) {
       console.error('Failed to fetch problems:', err);
@@ -72,13 +77,27 @@ export default function ProblemsPage() {
     }
   };
 
-  // Debounced search & filter trigger
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchProblems();
     }, 200);
     return () => clearTimeout(timer);
   }, [search, difficulty, topic, status, sortBy, order, page]);
+
+  const handleToggleBookmark = async (problemId, e) => {
+    e.stopPropagation();
+    try {
+      const res = await axiosClient.post('/problem/bookmark', { problemId });
+      setBookmarkedIds((prev) => {
+        const next = new Set(prev);
+        if (res.data?.bookmarked) next.add(problemId);
+        else next.delete(problemId);
+        return next;
+      });
+    } catch (err) {
+      console.error('Failed to toggle bookmark:', err);
+    }
+  };
 
   const handleSort = (field) => {
     if (sortBy === field) {
@@ -89,64 +108,154 @@ export default function ProblemsPage() {
     }
   };
 
-  const getDifficultyBadge = (d) => {
+  const getDifficultyStyle = (d) => {
     const diff = (d || 'easy').toLowerCase();
-    if (diff === 'easy') return <span className="badge-easy px-2.5 py-0.5 rounded text-[11px] font-mono font-bold uppercase">Easy</span>;
-    if (diff === 'medium') return <span className="badge-medium px-2.5 py-0.5 rounded text-[11px] font-mono font-bold uppercase">Med</span>;
-    return <span className="badge-hard px-2.5 py-0.5 rounded text-[11px] font-mono font-bold uppercase">Hard</span>;
+    if (diff === 'easy') {
+      return { color: '#22c55e', bg: 'rgba(34, 197, 94, 0.12)', border: 'rgba(34, 197, 94, 0.3)', label: 'Easy' };
+    }
+    if (diff === 'medium') {
+      return { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.3)', label: 'Medium' };
+    }
+    return { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.3)', label: 'Hard' };
   };
+
+  // Quick stats counts
+  const statsCounts = useMemo(() => {
+    const easy = problems.filter((p) => p.difficulty?.toLowerCase() === 'easy').length;
+    const med = problems.filter((p) => p.difficulty?.toLowerCase() === 'medium').length;
+    const hard = problems.filter((p) => p.difficulty?.toLowerCase() === 'hard').length;
+    const solved = problems.filter((p) => p.isSolved).length;
+    return { easy, med, hard, solved, total: totalProblems || problems.length };
+  }, [problems, totalProblems]);
 
   const totalPages = Math.ceil(totalProblems / limit) || 1;
 
   return (
-    <div className="min-h-screen bg-[#0a0b0e] flex flex-col font-sans">
+    <div style={{ minHeight: '100vh', background: '#0a0b0e', color: '#e8eaf0', fontFamily: "'Syne', -apple-system, sans-serif" }}>
       <Navbar />
 
-      <div className="max-w-7xl w-full mx-auto px-4 md:px-6 py-6 flex-1 flex flex-col space-y-5">
-        {/* Page Title & Stats Banner */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-[#0e1017] border border-[#262b3d] rounded-2xl p-6 shadow-xl">
+      <main style={{ maxWidth: '1360px', margin: '0 auto', padding: '28px 24px 64px' }}>
+        {/* Top Hero Banner */}
+        <div style={{
+          background: 'linear-gradient(135deg, #131620 0%, #10121a 100%)',
+          border: '1px solid #1e2230',
+          borderRadius: '16px',
+          padding: '24px 28px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '20px'
+        }}>
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
-              Problem Catalog
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '3px 10px', borderRadius: '12px', background: 'rgba(108, 142, 247, 0.12)', border: '1px solid rgba(108, 142, 247, 0.25)', color: '#6c8ef7', fontSize: '11px', fontWeight: 700, marginBottom: '8px', fontFamily: "'JetBrains Mono', monospace" }}>
+              <span>⚡ Curated Problem Catalog</span>
+            </div>
+            <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.5px', marginBottom: '6px' }}>
+              DSA Coding Problems
             </h1>
-            <p className="text-xs text-[#9aa0b8] mt-1">
-              Curated Data Structures and Algorithms problems with integrated AI Mentoring.
+            <p style={{ fontSize: '13px', color: '#7a8099', maxWidth: '600px', lineHeight: 1.5 }}>
+              Solve problems with in-workspace AI debugging, multi-language sandbox execution, and real-time testcase feedback.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <NavLink
               to="/recommendations"
-              className="btn-primary text-xs py-2 px-4 shadow-lg shadow-indigo-500/20"
+              style={{
+                padding: '10px 18px',
+                borderRadius: '8px',
+                background: '#6c8ef7',
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: 700,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 16px rgba(108, 142, 247, 0.25)'
+              }}
             >
-              <span>✨</span>
-              <span>Take Skill Assessment</span>
+              <span>🎯 Take Skill Assessment</span>
+            </NavLink>
+
+            <NavLink
+              to="/explore"
+              style={{
+                padding: '10px 16px',
+                borderRadius: '8px',
+                background: '#1a1d2b',
+                border: '1px solid #2a2e42',
+                color: '#e8eaf0',
+                fontSize: '13px',
+                fontWeight: 600,
+                textDecoration: 'none'
+              }}
+            >
+              <span>🗺️ Explore Roadmap</span>
             </NavLink>
           </div>
         </div>
 
         {/* Filter Controls Toolbar */}
-        <div className="bg-[#0e1017] border border-[#262b3d] rounded-xl p-4 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <div style={{
+          background: '#131620',
+          border: '1px solid #1e2230',
+          borderRadius: '14px',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '14px'
+        }}>
+          {/* Main Controls Row */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '12px'
+          }}>
             {/* Search Input */}
-            <div className="relative">
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#555870', fontSize: '14px' }}>
+                🔍
+              </span>
               <input
                 type="text"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                placeholder="Search title, ID, topic..."
-                className="w-full bg-[#131620] border border-[#262b3d] focus:border-indigo-500 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-[#5e6480] outline-none font-sans"
+                placeholder="Search by title, #ID, topic..."
+                style={{
+                  width: '100%',
+                  padding: '9px 12px 9px 36px',
+                  background: '#0a0b0e',
+                  border: '1px solid #232736',
+                  borderRadius: '8px',
+                  color: '#e8eaf0',
+                  fontSize: '13px',
+                  outline: 'none',
+                  transition: 'border-color 0.15s'
+                }}
+                onFocus={(e) => (e.target.style.borderColor = '#6c8ef7')}
+                onBlur={(e) => (e.target.style.borderColor = '#232736')}
               />
-              <svg className="w-4 h-4 text-[#5e6480] absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
             </div>
 
             {/* Difficulty Filter */}
             <select
               value={difficulty}
               onChange={(e) => { setDifficulty(e.target.value); setPage(1); }}
-              className="bg-[#131620] border border-[#262b3d] text-[#ced3e8] rounded-lg px-3 py-1.5 text-xs font-mono outline-none cursor-pointer"
+              style={{
+                padding: '9px 12px',
+                background: '#0a0b0e',
+                border: '1px solid #232736',
+                borderRadius: '8px',
+                color: '#e8eaf0',
+                fontSize: '12px',
+                fontFamily: "'JetBrains Mono', monospace",
+                outline: 'none',
+                cursor: 'pointer'
+              }}
             >
               <option value="all">All Difficulties</option>
               <option value="easy">Easy</option>
@@ -158,7 +267,17 @@ export default function ProblemsPage() {
             <select
               value={topic}
               onChange={(e) => { setTopic(e.target.value); setPage(1); }}
-              className="bg-[#131620] border border-[#262b3d] text-[#ced3e8] rounded-lg px-3 py-1.5 text-xs font-mono outline-none cursor-pointer"
+              style={{
+                padding: '9px 12px',
+                background: '#0a0b0e',
+                border: '1px solid #232736',
+                borderRadius: '8px',
+                color: '#e8eaf0',
+                fontSize: '12px',
+                fontFamily: "'JetBrains Mono', monospace",
+                outline: 'none',
+                cursor: 'pointer'
+              }}
             >
               {TOPIC_LIST.map((t) => (
                 <option key={t.id} value={t.id}>{t.label}</option>
@@ -169,162 +288,356 @@ export default function ProblemsPage() {
             <select
               value={status}
               onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-              className="bg-[#131620] border border-[#262b3d] text-[#ced3e8] rounded-lg px-3 py-1.5 text-xs font-mono outline-none cursor-pointer"
+              style={{
+                padding: '9px 12px',
+                background: '#0a0b0e',
+                border: '1px solid #232736',
+                borderRadius: '8px',
+                color: '#e8eaf0',
+                fontSize: '12px',
+                fontFamily: "'JetBrains Mono', monospace",
+                outline: 'none',
+                cursor: 'pointer'
+              }}
             >
               <option value="all">All Status</option>
-              <option value="solved">Solved</option>
-              <option value="unsolved">Unsolved</option>
-              <option value="attempted">Attempted</option>
+              <option value="solved">✓ Solved</option>
+              <option value="unsolved">○ Unsolved</option>
+              <option value="attempted">⚡ Attempted</option>
             </select>
           </div>
 
-          {/* Quick Topic Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
-            {TOPIC_LIST.slice(0, 10).map((t) => (
-              <button
-                key={t.id}
-                onClick={() => { setTopic(t.id); setPage(1); }}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono whitespace-nowrap transition-all cursor-pointer border ${
-                  topic === t.id
-                    ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
-                    : 'bg-[#131620] text-[#9aa0b8] border-[#262b3d] hover:text-white hover:bg-[#1a1e2b]'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+          {/* Quick Topic Chips */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            overflowX: 'auto',
+            paddingTop: '2px',
+            scrollbarWidth: 'none'
+          }}>
+            {TOPIC_LIST.map((t) => {
+              const isSelected = topic.toLowerCase() === t.id.toLowerCase() || (t.id === 'all' && topic === 'all');
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => { setTopic(t.id); setPage(1); }}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    border: isSelected ? '1px solid #6c8ef7' : '1px solid #1e2230',
+                    background: isSelected ? 'rgba(108, 142, 247, 0.15)' : '#0d0e14',
+                    color: isSelected ? '#6c8ef7' : '#888d9f'
+                  }}
+                >
+                  <span style={{ fontSize: '11px' }}>{t.icon}</span>
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Dense Problems Table */}
-        <div className="bg-[#0e1017] border border-[#262b3d] rounded-2xl overflow-hidden shadow-xl flex-1 flex flex-col">
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left border-collapse font-sans text-xs">
+        {/* Problems Table */}
+        <div style={{
+          background: '#131620',
+          border: '1px solid #1e2230',
+          borderRadius: '14px',
+          overflow: 'hidden',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+        }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
-                <tr className="border-b border-[#262b3d] bg-[#131620] text-[#5e6480] font-mono text-[11px] uppercase tracking-wider select-none">
-                  <th className="py-3 px-4 w-12 text-center">Status</th>
-                  <th onClick={() => handleSort('problemNumber')} className="py-3 px-3 w-16 cursor-pointer hover:text-white">
+                <tr style={{
+                  background: '#0d0e14',
+                  borderBottom: '1px solid #1e2230',
+                  color: '#555870',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  userSelect: 'none'
+                }}>
+                  <th style={{ padding: '14px 16px', width: '50px', textAlign: 'center' }}>Status</th>
+                  <th
+                    onClick={() => handleSort('problemNumber')}
+                    style={{ padding: '14px 16px', width: '70px', cursor: 'pointer' }}
+                  >
                     # {sortBy === 'problemNumber' && (order === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th onClick={() => handleSort('title')} className="py-3 px-4 cursor-pointer hover:text-white">
+                  <th
+                    onClick={() => handleSort('title')}
+                    style={{ padding: '14px 20px', cursor: 'pointer' }}
+                  >
                     Title {sortBy === 'title' && (order === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th onClick={() => handleSort('difficulty')} className="py-3 px-4 w-24 cursor-pointer hover:text-white">
+                  <th
+                    onClick={() => handleSort('difficulty')}
+                    style={{ padding: '14px 16px', width: '120px', cursor: 'pointer' }}
+                  >
                     Difficulty {sortBy === 'difficulty' && (order === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th className="py-3 px-4 w-44">Topic / Subtopic</th>
-                  <th onClick={() => handleSort('acceptance')} className="py-3 px-4 w-28 text-right cursor-pointer hover:text-white">
+                  <th style={{ padding: '14px 20px', width: '220px' }}>Topic / Subtopic</th>
+                  <th
+                    onClick={() => handleSort('acceptance')}
+                    style={{ padding: '14px 20px', width: '120px', textAlign: 'right', cursor: 'pointer' }}
+                  >
                     Acceptance {sortBy === 'acceptance' && (order === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th className="py-3 px-4 w-24 text-right">Action</th>
+                  <th style={{ padding: '14px 20px', width: '130px', textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-[#1c202e]">
+              <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="py-16 text-center text-[#5e6480] font-mono">
-                      <div className="w-5 h-5 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin-custom mx-auto mb-2"></div>
-                      Loading problems...
+                    <td colSpan="7" style={{ padding: '60px', textAlign: 'center', color: '#7a8099', fontFamily: "'JetBrains Mono', monospace" }}>
+                      <div style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        border: '3px solid rgba(108, 142, 247, 0.2)',
+                        borderTopColor: '#6c8ef7',
+                        margin: '0 auto 12px',
+                        animation: 'spin 0.8s linear infinite'
+                      }} />
+                      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                      <span>Loading problem catalog...</span>
                     </td>
                   </tr>
                 ) : problems.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="py-16 text-center text-[#5e6480] font-mono">
-                      No problems match your current filter criteria.
+                    <td colSpan="7" style={{ padding: '60px', textAlign: 'center', color: '#7a8099' }}>
+                      <span style={{ fontSize: '28px', display: 'block', marginBottom: '8px' }}>🔍</span>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#e8eaf0', marginBottom: '4px' }}>
+                        No problems match your filters
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#555870' }}>
+                        Try adjusting your search query or selecting "All Topics".
+                      </p>
                     </td>
                   </tr>
                 ) : (
-                  problems.map((p) => (
-                    <tr
-                      key={p._id}
-                      onClick={() => navigate(`/problems/${p._id}`)}
-                      className="hover:bg-[#131620] transition-colors cursor-pointer group"
-                    >
-                      {/* Solved Status */}
-                      <td className="py-3 px-4 text-center">
-                        {p.isSolved ? (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold text-xs">
-                            ✓
-                          </span>
-                        ) : (
-                          <span className="text-[#373e57] text-sm font-mono">—</span>
-                        )}
-                      </td>
+                  problems.map((p, idx) => {
+                    const diffBadge = getDifficultyStyle(p.difficulty);
+                    const isBookmarked = bookmarkedIds.has(p._id);
+                    const probNum = p.problemNumber ? String(p.problemNumber).padStart(3, '0') : String(idx + 1).padStart(3, '0');
 
-                      {/* Number */}
-                      <td className="py-3 px-3 font-mono text-xs text-[#5e6480] group-hover:text-indigo-400 font-bold">
-                        {p.problemNumber ? String(p.problemNumber).padStart(3, '0') : '—'}
-                      </td>
-
-                      {/* Title */}
-                      <td className="py-3 px-4 font-semibold text-white group-hover:text-indigo-300 transition-colors">
-                        {p.title}
-                      </td>
-
-                      {/* Difficulty */}
-                      <td className="py-3 px-4">
-                        {getDifficultyBadge(p.difficulty)}
-                      </td>
-
-                      {/* Topic & Subtopic */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2 py-0.5 rounded bg-[#1a1e2b] text-[#9aa0b8] border border-[#262b3d] text-[11px] font-mono capitalize">
-                            {p.topic}
-                          </span>
-                          {p.subtopic && (
-                            <span className="text-[11px] text-[#5e6480] font-mono">
-                              • {p.subtopic}
+                    return (
+                      <tr
+                        key={p._id}
+                        onClick={() => navigate(`/problem/${p._id}`)}
+                        style={{
+                          borderBottom: '1px solid #181b26',
+                          transition: 'background 0.15s',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        {/* Status */}
+                        <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                          {p.isSolved ? (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              background: 'rgba(34, 197, 94, 0.15)',
+                              color: '#22c55e',
+                              fontSize: '11px',
+                              fontWeight: 800
+                            }}>
+                              ✓
                             </span>
+                          ) : p.isAttempted ? (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              background: 'rgba(245, 158, 11, 0.15)',
+                              color: '#f59e0b',
+                              fontSize: '11px'
+                            }}>
+                              ⚡
+                            </span>
+                          ) : (
+                            <span style={{ color: '#2e334a', fontFamily: "'JetBrains Mono', monospace" }}>○</span>
                           )}
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Acceptance */}
-                      <td className="py-3 px-4 text-right font-mono text-xs text-[#9aa0b8]">
-                        {p.acceptance?.rate || '50.0'}%
-                      </td>
+                        {/* Number */}
+                        <td style={{ padding: '14px 16px', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#555870', fontWeight: 700 }}>
+                          {probNum}
+                        </td>
 
-                      {/* Solve Link */}
-                      <td className="py-3 px-4 text-right">
-                        <span className="px-2.5 py-1 rounded bg-[#1a1e2b] group-hover:bg-indigo-600 text-[#9aa0b8] group-hover:text-white font-mono text-[11px] font-semibold transition-all">
-                          Solve →
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                        {/* Title */}
+                        <td style={{ padding: '14px 20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontWeight: 700, color: '#e8eaf0', fontSize: '14px' }}>
+                              {p.title}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Difficulty */}
+                        <td style={{ padding: '14px 16px' }}>
+                          <span style={{
+                            padding: '3px 8px',
+                            borderRadius: '5px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            fontFamily: "'JetBrains Mono', monospace",
+                            background: diffBadge.bg,
+                            color: diffBadge.color,
+                            border: `1px solid ${diffBadge.border}`
+                          }}>
+                            {diffBadge.label}
+                          </span>
+                        </td>
+
+                        {/* Topic & Subtopic */}
+                        <td style={{ padding: '14px 20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              background: '#0d0e14',
+                              border: '1px solid #202434',
+                              color: '#a0a5ba',
+                              fontSize: '11px',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              textTransform: 'capitalize'
+                            }}>
+                              {p.topic || p.tags || 'General'}
+                            </span>
+                            {p.subtopic && (
+                              <span style={{ fontSize: '11px', color: '#555870', fontFamily: "'JetBrains Mono', monospace" }}>
+                                • {p.subtopic}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Acceptance */}
+                        <td style={{ padding: '14px 20px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#888d9f' }}>
+                          {p.acceptance?.rate ? `${p.acceptance.rate}%` : '52.4%'}
+                        </td>
+
+                        {/* Action Buttons */}
+                        <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                              onClick={(e) => handleToggleBookmark(p._id, e)}
+                              title={isBookmarked ? 'Bookmarked' : 'Add to bookmarks'}
+                              style={{
+                                background: isBookmarked ? 'rgba(108, 142, 247, 0.15)' : 'none',
+                                border: isBookmarked ? '1px solid rgba(108, 142, 247, 0.3)' : '1px solid #232736',
+                                borderRadius: '6px',
+                                padding: '5px 8px',
+                                color: isBookmarked ? '#6c8ef7' : '#555870',
+                                fontSize: '12px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {isBookmarked ? '★' : '☆'}
+                            </button>
+
+                            <span
+                              style={{
+                                padding: '5px 12px',
+                                borderRadius: '6px',
+                                background: '#1a1d2b',
+                                border: '1px solid #2a2e42',
+                                color: '#6c8ef7',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                fontFamily: "'JetBrains Mono', monospace"
+                              }}
+                            >
+                              Solve →
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
 
           {/* Pagination Footer */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[#131620] border-t border-[#262b3d] text-xs font-mono text-[#9aa0b8]">
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 20px',
+            background: '#0d0e14',
+            borderTop: '1px solid #1e2230',
+            fontSize: '12px',
+            fontFamily: "'JetBrains Mono', monospace",
+            color: '#7a8099',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
             <div>
               Showing {problems.length} of {totalProblems} problems
             </div>
 
-            <div className="flex items-center gap-2">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="px-2.5 py-1 rounded bg-[#1a1e2b] hover:bg-[#23283a] disabled:opacity-30 disabled:cursor-not-allowed border border-[#262b3d] cursor-pointer"
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: '#131620',
+                  border: '1px solid #1e2230',
+                  color: page <= 1 ? '#3a3e52' : '#e8eaf0',
+                  cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 600
+                }}
               >
-                Previous
+                ← Prev
               </button>
-              <span>Page {page} of {totalPages}</span>
+
+              <span style={{ color: '#e8eaf0' }}>Page {page} of {totalPages}</span>
+
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="px-2.5 py-1 rounded bg-[#1a1e2b] hover:bg-[#23283a] disabled:opacity-30 disabled:cursor-not-allowed border border-[#262b3d] cursor-pointer"
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: '#131620',
+                  border: '1px solid #1e2230',
+                  color: page >= totalPages ? '#3a3e52' : '#e8eaf0',
+                  cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 600
+                }}
               >
-                Next
+                Next →
               </button>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
