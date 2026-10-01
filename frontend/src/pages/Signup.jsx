@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, NavLink } from 'react-router';
 import { registerUser } from '../authSlice';
+import CodeBlazeLogo from '../components/CodeBlazeLogo';
 
 const signupSchema = z.object({
   firstName: z.string().min(3, 'Minimum 3 characters required'),
@@ -255,7 +256,9 @@ export default function Signup() {
 
         {/* ── Left panel ── */}
         <div className="auth-left">
-          <div className="auth-brand">Code<span>Blaze</span></div>
+          <div style={{ marginBottom: '20px' }}>
+            <CodeBlazeLogo size={36} />
+          </div>
           <div className="auth-tagline">
             Your DSA grind<br />
             starts <span>here.</span>
@@ -286,7 +289,9 @@ export default function Signup() {
         <div className="auth-right">
           <div className="auth-card">
             <div className="auth-card-header">
-              <div className="auth-card-logo">Code<span>Blaze</span></div>
+              <div style={{ marginBottom: '14px', display: 'flex', justifyContent: 'center' }}>
+                <CodeBlazeLogo size={28} />
+              </div>
               <div className="auth-card-title">Create account</div>
               <div className="auth-card-sub">// ready to blaze through problems?</div>
             </div>

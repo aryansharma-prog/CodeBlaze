@@ -3,6 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../authSlice';
 import GlobalSearchModal from './GlobalSearchModal';
+import CodeBlazeLogo from './CodeBlazeLogo';
 
 export default function Navbar() {
   const dispatch = useDispatch();
@@ -43,13 +44,8 @@ export default function Navbar() {
       <header className="sticky top-0 z-50 h-14 bg-[#0e1017]/95 backdrop-blur-md border-b border-[#262b3d] px-4 md:px-6 flex items-center justify-between">
         {/* Left: Brand + Nav Links */}
         <div className="flex items-center gap-6">
-          <NavLink to="/" className="flex items-center gap-2 text-decoration-none group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-mono font-bold text-white shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-              CB
-            </div>
-            <span className="font-bold text-base tracking-tight text-white font-sans">
-              Code<span className="text-indigo-400">Blaze</span>
-            </span>
+          <NavLink to="/" className="flex items-center text-decoration-none group hover:opacity-95 transition-opacity">
+            <CodeBlazeLogo size={32} />
           </NavLink>
 
           {/* Navigation Links */}

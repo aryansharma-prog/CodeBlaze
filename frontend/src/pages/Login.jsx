@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, NavLink } from 'react-router';
 import { loginUser } from '../authSlice';
+import CodeBlazeLogo from '../components/CodeBlazeLogo';
 
 const loginSchema = z.object({
   emailId: z.string().email('Invalid email address'),
@@ -239,7 +240,9 @@ export default function Login() {
 
         {/* ── Left panel ── */}
         <div className="auth-left">
-          <div className="auth-brand">Code<span>Blaze</span></div>
+          <div style={{ marginBottom: '20px' }}>
+            <CodeBlazeLogo size={36} />
+          </div>
           <div className="auth-tagline">
             Back to the<br />
             <span>grind.</span> Let's go.
@@ -269,7 +272,9 @@ export default function Login() {
         <div className="auth-right">
           <div className="auth-card">
             <div className="auth-card-header">
-              <div className="auth-card-logo">Code<span>Blaze</span></div>
+              <div style={{ marginBottom: '14px', display: 'flex', justifyContent: 'center' }}>
+                <CodeBlazeLogo size={28} />
+              </div>
               <div className="auth-card-title">Welcome back</div>
               <div className="auth-card-sub">// pick up where you left off</div>
             </div>
