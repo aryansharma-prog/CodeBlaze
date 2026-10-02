@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function TestcaseConsole({
   visibleTestCases = [],
@@ -18,7 +18,7 @@ export default function TestcaseConsole({
   ];
 
   const handleAddCustomTestCase = () => {
-    const newCase = { input: "", output: "" };
+    const newCase = { input: '', output: '' };
     onUpdateCustomTestCases([...customTestCases, newCase]);
     setSelectedCaseIndex(allTestCases.length);
   };
@@ -36,168 +36,116 @@ export default function TestcaseConsole({
     onUpdateCustomTestCases(updated);
   };
 
-  const selectedCase = allTestCases[selectedCaseIndex] || allTestCases[0] || { input: "", output: "" };
+  const selectedCase = allTestCases[selectedCaseIndex] || allTestCases[0] || { input: '', output: '' };
   const customIndex = selectedCaseIndex >= visibleTestCases.length ? selectedCaseIndex - visibleTestCases.length : -1;
 
   // Auto-switch to result tab when execution finishes
-  React.useEffect(() => {
+  useEffect(() => {
     if (runResult) {
       setActiveTab('result');
     }
   }, [runResult]);
 
+  const isPassed = runResult && (runResult.allPassed || String(runResult.status).toLowerCase().includes('accepted'));
+
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      background: '#11131a',
-      border: '1px solid #1e2230',
-      borderRadius: '12px',
-      overflow: 'hidden',
-      fontFamily: "'Syne', -apple-system, sans-serif"
-    }}>
-      {/* Console Tab Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 12px',
-        height: '42px',
-        background: '#0d0e14',
-        borderBottom: '1px solid #1e2230',
-        flexShrink: 0
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+    <div className="flex flex-col h-full bg-surface-container-low overflow-hidden font-body-md">
+      {/* Testbench Header Strip */}
+      <div className="flex items-center justify-between px-2 bg-surface-container border-b border-outline-variant/40 flex-shrink-0">
+        <div className="flex items-center">
           <button
             onClick={() => setActiveTab('testcase')}
-            style={{
-              padding: '5px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              border: activeTab === 'testcase' ? '1px solid rgba(108, 142, 247, 0.3)' : '1px solid transparent',
-              background: activeTab === 'testcase' ? 'rgba(108, 142, 247, 0.12)' : 'transparent',
-              color: activeTab === 'testcase' ? '#6c8ef7' : '#888d9f'
-            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-body-sm font-semibold transition-all cursor-pointer ${
+              activeTab === 'testcase'
+                ? 'bg-surface-container-lowest text-on-surface shadow-[0_-2px_0_0_#4cd7f6_inset]'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+            type="button"
           >
-            <span>⌨️</span>
+            <span className="material-symbols-outlined text-[15px] text-primary">terminal</span>
             <span>Testcase</span>
           </button>
 
           <button
             onClick={() => setActiveTab('result')}
-            style={{
-              padding: '5px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              border: activeTab === 'result' ? '1px solid rgba(108, 142, 247, 0.3)' : '1px solid transparent',
-              background: activeTab === 'result' ? 'rgba(108, 142, 247, 0.12)' : 'transparent',
-              color: activeTab === 'result' ? '#6c8ef7' : '#888d9f'
-            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-body-sm font-semibold transition-all cursor-pointer ${
+              activeTab === 'result'
+                ? 'bg-surface-container-lowest text-on-surface shadow-[0_-2px_0_0_#4cd7f6_inset]'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+            type="button"
           >
-            <span>📊</span>
+            <span
+              className={`material-symbols-outlined text-[15px] ${
+                !runResult ? 'text-outline' : isPassed ? 'text-tertiary' : 'text-error'
+              }`}
+            >
+              {isPassed ? 'check_circle' : 'analytics'}
+            </span>
             <span>Test Result</span>
             {runResult && (
-              <span style={{
-                width: '7px',
-                height: '7px',
-                borderRadius: '50%',
-                background: runResult.allPassed || runResult.status === 'Accepted' ? '#22c55e' : '#ef4444'
-              }} />
+              <span className={`font-code-md text-label-sm font-bold ml-1 ${isPassed ? 'text-tertiary' : 'text-error'}`}>
+                {isPassed ? '(Accepted)' : `(${runResult.status || 'Failed'})`}
+              </span>
             )}
           </button>
         </div>
 
         {/* Execution Status Spinner */}
         {isExecuting && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6c8ef7', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace" }}>
-            <div style={{
-              width: '12px',
-              height: '12px',
-              borderRadius: '50%',
-              border: '2px solid rgba(108, 142, 247, 0.2)',
-              borderTopColor: '#6c8ef7',
-              animation: 'spin 0.8s linear infinite'
-            }} />
-            <span>Executing Code...</span>
+          <div className="flex items-center gap-2 text-primary font-code-md text-code-sm pr-2 animate-pulse">
+            <div className="w-3 h-3 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+            <span>Running Code...</span>
           </div>
         )}
       </div>
 
-      {/* Console Body */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px', fontSize: '12px' }}>
+      {/* Testbench Workspace Body */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-surface-container-lowest text-on-surface">
         {activeTab === 'testcase' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {/* Case selector tabs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto' }}>
+          <div className="space-y-3.5 animate-fade-in">
+            {/* Case Selectors */}
+            <div className="flex items-center gap-1.5 flex-wrap">
               {allTestCases.map((tc, idx) => {
                 const isSelected = selectedCaseIndex === idx;
                 return (
                   <button
                     key={idx}
                     onClick={() => setSelectedCaseIndex(idx)}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: '6px',
-                      fontSize: '11px',
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      border: isSelected ? '1px solid #6c8ef7' : '1px solid #232736',
-                      background: isSelected ? 'rgba(108, 142, 247, 0.15)' : '#0d0e14',
-                      color: isSelected ? '#6c8ef7' : '#888d9f'
-                    }}
+                    className={`px-3 py-1 font-code-md text-code-md font-semibold rounded flex items-center gap-1.5 cursor-pointer transition-all border ${
+                      isSelected
+                        ? 'bg-surface-container-high text-primary border-primary/50'
+                        : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant border-outline-variant'
+                    }`}
+                    type="button"
                   >
-                    {tc.name}
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-primary' : 'bg-outline'}`} />
+                    <span>{tc.name}</span>
                   </button>
                 );
               })}
 
               <button
                 onClick={handleAddCustomTestCase}
-                style={{
-                  padding: '5px 10px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: '1px dashed #2e334a',
-                  background: 'none',
-                  color: '#6c8ef7'
-                }}
+                className="px-2.5 py-1 hover:bg-surface-container text-primary hover:text-primary-fixed font-code-md text-code-md rounded border border-dashed border-primary/40 flex items-center gap-1 cursor-pointer transition-all"
+                type="button"
               >
-                + Custom Case
+                <span className="material-symbols-outlined text-[14px]">add</span>
+                <span>Custom Case</span>
               </button>
             </div>
 
             {/* Selected Testcase Editor */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '11px', color: '#555870', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
-                  Input Data:
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-label-sm text-outline uppercase tracking-wider font-bold">
+                  {selectedCase.isCustom ? `Custom Case ${customIndex + 1} Input` : 'Input Data'}
                 </span>
                 {selectedCase.isCustom && (
                   <button
                     onClick={() => handleDeleteCustomTestCase(customIndex)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#ef4444',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      fontWeight: 600
-                    }}
+                    className="text-error hover:underline font-label-sm font-semibold cursor-pointer border-none bg-transparent"
+                    type="button"
                   >
                     Delete Case
                   </button>
@@ -209,51 +157,20 @@ export default function TestcaseConsole({
                   value={selectedCase.input}
                   onChange={(e) => handleCustomInputChange(customIndex, e.target.value)}
                   placeholder="Enter custom input values (e.g. 2 3 or [2,7,11,15])..."
-                  style={{
-                    width: '100%',
-                    minHeight: '80px',
-                    background: '#0d0e14',
-                    border: '1px solid #232736',
-                    borderRadius: '8px',
-                    padding: '10px',
-                    color: '#e8eaf0',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '12px',
-                    outline: 'none'
-                  }}
+                  className="w-full min-h-[90px] bg-surface-container border border-outline-variant focus:border-primary rounded p-2.5 text-on-surface font-code-md text-code-md outline-none transition-colors"
                 />
               ) : (
-                <pre style={{
-                  margin: 0,
-                  background: '#0d0e14',
-                  border: '1px solid #1e2230',
-                  borderRadius: '8px',
-                  padding: '10px 14px',
-                  color: '#e8eaf0',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '12px',
-                  whiteSpace: 'pre-wrap'
-                }}>
-                  {selectedCase.input || '// No input specified'}
+                <pre className="m-0 bg-surface-container border border-outline-variant rounded p-2.5 text-secondary-fixed font-code-md text-code-md whitespace-pre-wrap">
+                  {selectedCase.input || '// No input parameters specified'}
                 </pre>
               )}
 
               {selectedCase.output && (
-                <div>
-                  <span style={{ fontSize: '11px', color: '#555870', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, display: 'block', marginBottom: '4px' }}>
+                <div className="space-y-1">
+                  <span className="font-label-sm text-outline uppercase tracking-wider font-bold block">
                     Expected Output:
                   </span>
-                  <pre style={{
-                    margin: 0,
-                    background: '#0d0e14',
-                    border: '1px solid #1e2230',
-                    borderRadius: '8px',
-                    padding: '10px 14px',
-                    color: '#22c55e',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '12px',
-                    whiteSpace: 'pre-wrap'
-                  }}>
+                  <pre className="m-0 bg-surface-container border border-outline-variant rounded p-2.5 text-tertiary font-code-md text-code-md whitespace-pre-wrap">
                     {selectedCase.output}
                   </pre>
                 </div>
@@ -263,57 +180,51 @@ export default function TestcaseConsole({
         )}
 
         {activeTab === 'result' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div className="space-y-3.5 animate-fade-in">
             {!runResult ? (
-              <div style={{ padding: '32px', textAlign: 'center', color: '#555870', fontFamily: "'JetBrains Mono', monospace" }}>
-                Click "Run" or press ⌘ + Enter to execute your code against the testcases.
+              <div className="p-8 text-center text-outline font-code-md text-body-sm">
+                Click "Run" or press <kbd className="px-1 py-0.5 bg-surface-container rounded text-on-surface">⌘⏎</kbd> to
+                execute your code against the testcases.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="space-y-3">
                 {/* Result Header Banner */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  background: runResult.allPassed || runResult.status === 'Accepted' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                  border: runResult.allPassed || runResult.status === 'Accepted' ? '1px solid rgba(34, 197, 94, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{
-                      fontWeight: 800,
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: '13px',
-                      color: runResult.allPassed || runResult.status === 'Accepted' ? '#22c55e' : '#ef4444'
-                    }}>
-                      {runResult.status || (runResult.allPassed ? 'Accepted' : 'Wrong Answer')}
+                <div
+                  className={`flex items-center justify-between p-3 rounded border ${
+                    isPassed
+                      ? 'bg-emerald-500/10 border-emerald-500/30'
+                      : 'bg-red-500/10 border-red-500/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={`material-symbols-outlined text-[18px] ${
+                        isPassed ? 'text-tertiary' : 'text-error'
+                      }`}
+                    >
+                      {isPassed ? 'check_circle' : 'error'}
+                    </span>
+                    <span
+                      className={`font-headline-sm font-bold font-code-md ${
+                        isPassed ? 'text-tertiary' : 'text-error'
+                      }`}
+                    >
+                      {runResult.status || (isPassed ? 'Accepted' : 'Wrong Answer')}
                     </span>
                     {runResult.runtime !== undefined && (
-                      <span style={{ fontSize: '11px', color: '#888d9f', fontFamily: "'JetBrains Mono', monospace" }}>
-                        • Runtime: {runResult.runtime} ms
+                      <span className="font-code-md text-label-sm text-outline">
+                        • Runtime: <span className="text-on-surface">{runResult.runtime} ms</span>
                       </span>
                     )}
                   </div>
 
-                  {(!runResult.allPassed && runResult.status !== 'Accepted') && (
+                  {!isPassed && (
                     <button
-                      onClick={() => onAskAIDebug(runResult.error || runResult.stderr || 'Wrong answer')}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: '6px',
-                        background: 'rgba(108, 142, 247, 0.15)',
-                        border: '1px solid rgba(108, 142, 247, 0.3)',
-                        color: '#6c8ef7',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
+                      onClick={() => onAskAIDebug(runResult.error || runResult.stderr || 'Execution failed')}
+                      className="btn-ai text-xs py-1 px-2.5"
+                      type="button"
                     >
-                      <span>✨</span>
+                      <span className="material-symbols-outlined text-[14px]">psychology</span>
                       <span>Ask AI to Debug</span>
                     </button>
                   )}
@@ -321,21 +232,11 @@ export default function TestcaseConsole({
 
                 {/* Stdout Output */}
                 {(runResult.stdout || runResult.output) && (
-                  <div>
-                    <span style={{ fontSize: '11px', color: '#555870', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, display: 'block', marginBottom: '4px' }}>
+                  <div className="space-y-1">
+                    <span className="font-label-sm text-outline uppercase tracking-wider font-bold block">
                       Standard Output:
                     </span>
-                    <pre style={{
-                      margin: 0,
-                      background: '#0d0e14',
-                      border: '1px solid #1e2230',
-                      borderRadius: '8px',
-                      padding: '10px 14px',
-                      color: '#e8eaf0',
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: '12px',
-                      whiteSpace: 'pre-wrap'
-                    }}>
+                    <pre className="m-0 bg-surface-container border border-outline-variant rounded p-3 text-on-surface font-code-md text-code-md whitespace-pre-wrap">
                       {runResult.stdout || runResult.output}
                     </pre>
                   </div>
@@ -343,21 +244,11 @@ export default function TestcaseConsole({
 
                 {/* Error Trace if any */}
                 {(runResult.error || runResult.stderr || runResult.compile_output) && (
-                  <div>
-                    <span style={{ fontSize: '11px', color: '#ef4444', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, display: 'block', marginBottom: '4px' }}>
+                  <div className="space-y-1">
+                    <span className="font-label-sm text-error uppercase tracking-wider font-bold block">
                       Compiler / Error Output:
                     </span>
-                    <pre style={{
-                      margin: 0,
-                      background: 'rgba(239, 68, 68, 0.05)',
-                      border: '1px solid rgba(239, 68, 68, 0.2)',
-                      borderRadius: '8px',
-                      padding: '10px 14px',
-                      color: '#f87171',
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: '12px',
-                      whiteSpace: 'pre-wrap'
-                    }}>
+                    <pre className="m-0 bg-error/10 border border-error/25 rounded p-3 text-red-300 font-code-md text-code-md whitespace-pre-wrap">
                       {runResult.error || runResult.stderr || runResult.compile_output}
                     </pre>
                   </div>

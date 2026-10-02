@@ -8,17 +8,19 @@ export default function AIMentorPanel({
   recentError = null,
   activeTestCase = null,
   onClose = () => {},
-  autoTriggerAction = null // 'debug' | 'hint' etc.
+  autoTriggerAction = null, // 'debug' | 'hint' etc.
+  onApplyCodeFix = () => {}
 }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: `👋 Hi! I am your **CodeBlaze AI Mentor**.\n\nI have full context of **${problem?.title || 'this problem'}** and your **${language.toUpperCase()}** code. How can I guide you?`
+      content: `👋 Hi! I am your **Blaze AI Copilot**.\n\nI have full context of **${problem?.title || 'this problem'}** and your **${language.toUpperCase()}** buffer. How can I assist with your solution?`
     }
   ]);
   const [inputQuery, setInputQuery] = useState('');
-  const [loadingAction, setLoadingAction] = useState(null); // name of currently running quick action
+  const [loadingAction, setLoadingAction] = useState(null); // name of currently running action
   const [structuredCard, setStructuredCard] = useState(null); // Structured JSON result from quick action
+  const [copiedCode, setCopiedCode] = useState(false);
   const chatBottomRef = useRef(null);
 
   // Auto-scroll chat to bottom
@@ -66,7 +68,7 @@ export default function AIMentorPanel({
         ...prev,
         {
           role: 'assistant',
-          content: `⚠️ AI Mentor is temporarily busy or adjusting. Your code is safely saved.`
+          content: `⚠️ Blaze AI Copilot is temporarily busy or adjusting. Your code buffer is safely preserved.`
         }
       ]);
     } finally {
@@ -115,82 +117,100 @@ export default function AIMentorPanel({
     setMessages([
       {
         role: 'assistant',
-        content: `Conversation cleared. I am ready to analyze your code for **${problem?.title || 'this problem'}**.`
+        content: `Conversation reset. I am ready to inspect your code and algorithmic logic for **${
+          problem?.title || 'this problem'
+        }**.`
       }
     ]);
     setStructuredCard(null);
   };
 
+  const handleCopySuggestedFix = async (fixText) => {
+    try {
+      await navigator.clipboard.writeText(fixText);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-[#0e1017] border border-purple-500/30 rounded-xl overflow-hidden shadow-2xl font-sans animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3.5 h-11 bg-gradient-to-r from-purple-950/40 via-[#131620] to-[#131620] border-b border-purple-500/20 flex-shrink-0">
+    <div className="flex flex-col h-full bg-surface text-on-surface font-body-md overflow-hidden select-none">
+      {/* AI Copilot Header */}
+      <div className="flex items-center justify-between px-3.5 py-2 bg-surface-container-low border-b border-outline-variant/40 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-md bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xs text-purple-300 font-bold">
-            ✨
-          </div>
-          <span className="font-bold text-xs text-white">AI Coding Mentor</span>
-          <span className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 font-mono text-[10px] border border-purple-500/25">
-            Context Aware
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+          </span>
+          <span className="font-headline-sm text-headline-sm font-bold text-on-surface">Blaze AI</span>
+          <span className="px-1.5 py-[1px] bg-secondary-container/40 text-secondary-fixed rounded font-label-sm text-[10px] border border-secondary/30">
+            Gemini 1.5
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 text-on-surface-variant">
           <button
             onClick={handleClearChat}
-            className="p-1 text-[#5e6480] hover:text-[#9aa0b8] text-xs rounded hover:bg-[#1a1e2b] cursor-pointer"
-            title="Clear Chat"
+            className="p-1 hover:text-on-surface hover:bg-surface-container rounded transition-colors cursor-pointer"
+            title="Clear Chat History"
+            type="button"
           >
-            Clear
+            <span className="material-symbols-outlined text-[16px]">delete_sweep</span>
           </button>
           <button
             onClick={onClose}
-            className="p-1 text-[#5e6480] hover:text-white text-xs rounded hover:bg-[#1a1e2b] cursor-pointer"
-            title="Close Mentor Panel"
+            className="p-1 hover:text-on-surface hover:bg-surface-container rounded transition-colors cursor-pointer"
+            title="Close Copilot Panel"
+            type="button"
           >
-            ✕
+            <span className="material-symbols-outlined text-[16px]">close</span>
           </button>
         </div>
       </div>
 
-      {/* Quick Action Chips Bar */}
-      <div className="flex items-center gap-1.5 px-3 py-2 bg-[#131620] border-b border-[#262b3d] overflow-x-auto no-scrollbar flex-shrink-0 text-xs">
+      {/* Quick Action Prompt Pills */}
+      <div className="px-2.5 py-1.5 bg-surface-container-low border-b border-outline-variant/30 flex items-center gap-1.5 overflow-x-auto flex-shrink-0">
         {[
-          { id: 'hint', label: '💡 Hint', title: 'Get conceptual hint' },
-          { id: 'debug', label: '🐛 Debug', title: 'Diagnose runtime/logical bugs' },
-          { id: 'explain', label: '🧠 Explain Code', title: 'Step-by-step code explanation' },
-          { id: 'complexity', label: '⏱ Complexity', title: 'Analyze Time & Space bounds' },
-          { id: 'optimize', label: '🚀 Optimize', title: 'Suggest algorithmic optimizations' },
-          { id: 'concept', label: '📚 Concept', title: 'Explain core DSA theory' }
+          { id: 'hint', label: 'Hint', icon: 'lightbulb', color: 'text-primary' },
+          { id: 'complexity', label: 'Complexity', icon: 'speed', color: 'text-tertiary' },
+          { id: 'debug', label: 'Edge Cases', icon: 'bug_report', color: 'text-amber-400' },
+          { id: 'explain', label: 'Explain', icon: 'neurology', color: 'text-secondary' },
+          { id: 'optimize', label: 'Optimize', icon: 'rocket_launch', color: 'text-primary' },
+          { id: 'concept', label: 'Concept', icon: 'auto_stories', color: 'text-on-surface' }
         ].map((btn) => (
           <button
             key={btn.id}
             onClick={() => handleQuickAction(btn.id)}
             disabled={!!loadingAction}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold tracking-wide transition-all cursor-pointer whitespace-nowrap border ${
+            className={`flex-shrink-0 px-2.5 py-1 rounded-full font-label-md text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 border ${
               loadingAction === btn.id
-                ? 'bg-purple-500/20 text-purple-300 border-purple-500 animate-pulse'
-                : 'bg-[#1a1e2b] hover:bg-[#23283a] text-[#c084fc] border-purple-500/25 hover:border-purple-500/50'
+                ? 'bg-primary-container/20 text-primary border-primary animate-pulse'
+                : 'bg-surface-container hover:bg-surface-container-high text-on-surface border-outline-variant'
             }`}
-            title={btn.title}
+            type="button"
           >
-            {btn.label}
+            <span className={`material-symbols-outlined text-[13px] ${btn.color}`}>{btn.icon}</span>
+            <span>{btn.label}</span>
           </button>
         ))}
       </div>
 
-      {/* Chat & Structured Card Body */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+      {/* Active Chat & Structured Output Stream */}
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5 font-body-sm text-body-sm text-on-surface leading-relaxed">
         {/* Structured Card Output */}
         {structuredCard && (
-          <div className="bg-[#131620] border border-purple-500/30 rounded-xl p-4 space-y-3 shadow-lg animate-fade-in font-sans">
-            <div className="flex items-center justify-between border-b border-[#262b3d] pb-2">
-              <span className="font-mono text-xs font-bold text-purple-400 uppercase tracking-wider">
-                {structuredCard.type?.replace('_', ' ') || 'Analysis'}
+          <div className="bg-surface-container-low border border-primary/40 rounded p-3.5 space-y-2.5 shadow-[0_0_16px_-4px_rgba(6,182,212,0.2)] animate-fade-in">
+            <div className="flex items-center justify-between border-b border-outline-variant pb-1.5">
+              <span className="font-mono text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[15px]">psychology</span>
+                <span>{structuredCard.type?.replace('_', ' ') || 'Diagnostic'}</span>
               </span>
               <button
                 onClick={() => setStructuredCard(null)}
-                className="text-[#5e6480] hover:text-white text-xs"
+                className="text-outline hover:text-on-surface cursor-pointer border-none bg-transparent"
+                type="button"
               >
                 ✕
               </button>
@@ -198,61 +218,96 @@ export default function AIMentorPanel({
 
             {/* Summary */}
             {structuredCard.summary && (
-              <div className="text-xs font-semibold text-white">
+              <div className="font-semibold text-on-surface text-xs leading-snug">
                 {structuredCard.summary}
               </div>
             )}
 
-            {/* Debug specific fields */}
+            {/* Issue Details if Bug */}
             {structuredCard.issue && (
-              <div className="bg-red-500/10 border border-red-500/25 rounded-lg p-2.5 text-xs text-red-300 font-mono">
-                <strong>Issue:</strong> {structuredCard.issue}
-                {structuredCard.location && <div className="text-[11px] text-red-400/80 mt-1">At: {structuredCard.location}</div>}
+              <div className="bg-error/10 border border-error/25 rounded p-2.5 text-xs text-red-300 font-mono space-y-1">
+                <div className="font-bold text-error flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">error</span>
+                  <span>Identified Flaw:</span>
+                </div>
+                <div>{structuredCard.issue}</div>
+                {structuredCard.location && (
+                  <div className="text-[11px] text-outline mt-0.5">Location: {structuredCard.location}</div>
+                )}
               </div>
             )}
 
             {/* Explanation */}
             {structuredCard.explanation && (
-              <div className="text-xs text-[#ced3e8] leading-relaxed">
+              <div className="text-xs text-on-surface-variant leading-relaxed">
                 {structuredCard.explanation}
               </div>
             )}
 
-            {/* Complexity fields */}
+            {/* Complexity Analysis Card */}
             {structuredCard.timeComplexity && (
               <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
-                <div className="bg-[#0e1017] p-2.5 rounded border border-[#1c202e]">
-                  <div className="text-[10px] text-[#5e6480]">Time Complexity</div>
-                  <div className="text-emerald-400 font-bold mt-0.5">{structuredCard.timeComplexity}</div>
-                  {structuredCard.timeReason && <div className="text-[10px] text-[#9aa0b8] mt-1">{structuredCard.timeReason}</div>}
+                <div className="bg-surface-container p-2.5 rounded border border-outline-variant">
+                  <div className="text-[10px] text-outline uppercase">Time Complexity</div>
+                  <div className="text-tertiary font-bold mt-0.5">{structuredCard.timeComplexity}</div>
+                  {structuredCard.timeReason && (
+                    <div className="text-[10px] text-outline-variant mt-0.5">{structuredCard.timeReason}</div>
+                  )}
                 </div>
-                <div className="bg-[#0e1017] p-2.5 rounded border border-[#1c202e]">
-                  <div className="text-[10px] text-[#5e6480]">Space Complexity</div>
-                  <div className="text-indigo-400 font-bold mt-0.5">{structuredCard.spaceComplexity}</div>
-                  {structuredCard.spaceReason && <div className="text-[10px] text-[#9aa0b8] mt-1">{structuredCard.spaceReason}</div>}
+                <div className="bg-surface-container p-2.5 rounded border border-outline-variant">
+                  <div className="text-[10px] text-outline uppercase">Space Complexity</div>
+                  <div className="text-primary font-bold mt-0.5">{structuredCard.spaceComplexity}</div>
+                  {structuredCard.spaceReason && (
+                    <div className="text-[10px] text-outline-variant mt-0.5">{structuredCard.spaceReason}</div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Hint & Suggested Fix */}
+            {/* Hint Box */}
             {structuredCard.hint && (
-              <div className="bg-purple-500/10 border border-purple-500/25 rounded-lg p-2.5 text-xs text-purple-300">
-                <strong>💡 Hint:</strong> {structuredCard.hint}
+              <div className="bg-secondary-container/20 border border-secondary/30 rounded p-2.5 text-xs text-secondary-fixed flex items-start gap-2">
+                <span className="material-symbols-outlined text-[15px] text-secondary mt-0.5">lightbulb</span>
+                <div className="leading-snug">
+                  <strong>Hint:</strong> {structuredCard.hint}
+                </div>
               </div>
             )}
 
+            {/* Code Diff Box & Suggested Fix */}
             {structuredCard.suggestedFix && (
-              <div className="space-y-1">
-                <div className="text-[10px] font-mono text-[#5e6480] uppercase">Suggested Fix / Pattern</div>
-                <pre className="p-2.5 bg-[#0e1017] rounded-lg border border-[#262b3d] font-mono text-xs text-emerald-400 overflow-x-auto">
+              <div className="bg-surface-container-lowest p-2.5 rounded border border-outline-variant space-y-1.5 font-code-md text-code-md">
+                <div className="flex items-center justify-between text-outline font-label-sm">
+                  <span>SUGGESTED REPLACEMENT</span>
+                  <button
+                    onClick={() => handleCopySuggestedFix(structuredCard.suggestedFix)}
+                    className="text-primary hover:underline flex items-center gap-0.5 cursor-pointer border-none bg-transparent"
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[12px]">content_copy</span>
+                    <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+                  </button>
+                </div>
+
+                <pre className="p-2 bg-surface-container rounded font-mono text-xs text-tertiary overflow-x-auto m-0 whitespace-pre">
                   {structuredCard.suggestedFix}
                 </pre>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={() => onApplyCodeFix(structuredCard.suggestedFix)}
+                    className="px-2.5 py-1 bg-primary text-on-primary font-label-md text-label-md font-bold rounded hover:opacity-90 transition-opacity cursor-pointer border-none"
+                    type="button"
+                  >
+                    Apply Fix to Editor
+                  </button>
+                </div>
               </div>
             )}
 
             {/* Optimization Hints */}
             {structuredCard.optimizationHints && (
-              <ul className="list-disc pl-4 space-y-1 text-xs text-[#ced3e8]">
+              <ul className="list-disc pl-4 space-y-1 text-xs text-on-surface-variant">
                 {structuredCard.optimizationHints.map((h, i) => (
                   <li key={i}>{h}</li>
                 ))}
@@ -261,54 +316,64 @@ export default function AIMentorPanel({
           </div>
         )}
 
-        {/* Chat Message History */}
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-fade-in`}
-          >
+        {/* Message Thread */}
+        {messages.map((msg, index) => {
+          const isUser = msg.role === 'user';
+          return (
             <div
-              className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap ${
-                msg.role === 'user'
-                  ? 'bg-indigo-600 text-white font-sans rounded-br-none'
-                  : 'bg-[#131620] border border-[#262b3d] text-[#ced3e8] rounded-bl-none font-sans'
-              }`}
+              key={index}
+              className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-1 animate-fade-in`}
             >
-              {msg.content}
+              <div className="flex items-center gap-1 text-outline font-label-sm text-[10px] px-1">
+                <span>{isUser ? 'You' : 'Blaze AI Copilot'}</span>
+              </div>
+              <div
+                className={`max-w-[92%] p-3 rounded-lg leading-relaxed whitespace-pre-wrap ${
+                  isUser
+                    ? 'bg-surface-container-highest text-on-surface font-body-sm'
+                    : 'bg-surface-container-low border border-outline-variant/60 text-on-surface font-body-sm shadow-[0_0_12px_-4px_rgba(6,182,212,0.1)]'
+                }`}
+              >
+                {msg.content}
+              </div>
             </div>
-            <span className="text-[10px] font-mono text-[#5e6480] mt-1 px-1">
-              {msg.role === 'user' ? 'You' : 'AI Mentor'}
-            </span>
-          </div>
-        ))}
+          );
+        })}
 
-        {/* Spinner when waiting */}
+        {/* Loading Spinner */}
         {loadingAction && (
-          <div className="flex items-center gap-2 text-xs font-mono text-purple-400 bg-purple-500/10 border border-purple-500/25 rounded-xl p-3 animate-pulse">
-            <div className="w-3.5 h-3.5 rounded-full border-2 border-purple-500 border-t-transparent animate-spin-custom"></div>
-            <span>Analyzing code & problem invariants...</span>
+          <div className="flex items-center gap-2 text-xs font-code-md text-primary bg-primary-container/10 border border-primary/20 rounded p-2.5 animate-pulse">
+            <div className="w-3.5 h-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <span>Analyzing problem invariants & code syntax...</span>
           </div>
         )}
 
         <div ref={chatBottomRef} />
       </div>
 
-      {/* Input Box */}
-      <form onSubmit={handleSendMessage} className="p-2.5 bg-[#131620] border-t border-[#262b3d] flex items-center gap-2">
-        <input
-          type="text"
-          value={inputQuery}
-          onChange={(e) => setInputQuery(e.target.value)}
-          placeholder="Ask mentor a follow-up or question..."
-          className="flex-1 bg-[#0e1017] border border-[#262b3d] focus:border-purple-500 rounded-lg px-3 py-2 text-xs text-white outline-none placeholder-[#5e6480] font-sans"
-        />
-        <button
-          type="submit"
-          disabled={!inputQuery.trim() || !!loadingAction}
-          className="btn-ai text-xs py-2 px-3"
-        >
-          Send
-        </button>
+      {/* AI Prompt Input Bar */}
+      <form onSubmit={handleSendMessage} className="p-2.5 bg-surface-container-low border-t border-outline-variant/40 flex-shrink-0">
+        <div className="relative flex items-center bg-surface-container-lowest rounded px-2.5 py-1.5 border border-outline-variant focus-within:border-primary transition-all">
+          <input
+            type="text"
+            value={inputQuery}
+            onChange={(e) => setInputQuery(e.target.value)}
+            placeholder="Ask Blaze AI... (/explain, /hint, /test)"
+            className="w-full bg-transparent font-code-md text-code-md text-on-surface placeholder:text-outline focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!inputQuery.trim() || !!loadingAction}
+            className="p-1 bg-primary hover:bg-primary-fixed-dim text-on-primary rounded transition-colors ml-1.5 flex-shrink-0 disabled:opacity-40 cursor-pointer border-none flex items-center justify-center"
+            title="Send Query to Blaze AI"
+          >
+            <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
+          </button>
+        </div>
+        <div className="flex items-center justify-between mt-1 text-outline font-label-sm text-[10px] px-0.5">
+          <span>Press Enter to send</span>
+          <span>Context: Active Buffer</span>
+        </div>
       </form>
     </div>
   );

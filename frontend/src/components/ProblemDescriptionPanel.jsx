@@ -50,256 +50,191 @@ export default function ProblemDescriptionPanel({
   const getDiffBadge = () => {
     if (difficulty === 'easy') {
       return (
-        <span style={{
-          padding: '3px 8px',
-          borderRadius: '5px',
-          background: 'rgba(34, 197, 94, 0.12)',
-          color: '#22c55e',
-          border: '1px solid rgba(34, 197, 94, 0.3)',
-          fontSize: '11px',
-          fontWeight: 700,
-          fontFamily: "'JetBrains Mono', monospace"
-        }}>
+        <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-label-sm uppercase font-semibold">
           Easy
         </span>
       );
     }
     if (difficulty === 'medium') {
       return (
-        <span style={{
-          padding: '3px 8px',
-          borderRadius: '5px',
-          background: 'rgba(245, 158, 11, 0.12)',
-          color: '#f59e0b',
-          border: '1px solid rgba(245, 158, 11, 0.3)',
-          fontSize: '11px',
-          fontWeight: 700,
-          fontFamily: "'JetBrains Mono', monospace"
-        }}>
+        <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/25 font-label-sm uppercase font-semibold">
           Medium
         </span>
       );
     }
     return (
-      <span style={{
-        padding: '3px 8px',
-        borderRadius: '5px',
-        background: 'rgba(239, 68, 68, 0.12)',
-        color: '#ef4444',
-        border: '1px solid rgba(239, 68, 68, 0.3)',
-        fontSize: '11px',
-        fontWeight: 700,
-        fontFamily: "'JetBrains Mono', monospace"
-      }}>
+      <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/25 font-label-sm uppercase font-semibold">
         Hard
       </span>
     );
   };
 
   // Resolve examples from problem.examples OR problem.visibleTestCases
-  const examplesList = (problem.examples && problem.examples.length > 0)
-    ? problem.examples
-    : (problem.visibleTestCases && problem.visibleTestCases.length > 0)
-      ? problem.visibleTestCases.map(tc => ({
+  const examplesList =
+    problem.examples && problem.examples.length > 0
+      ? problem.examples
+      : problem.visibleTestCases && problem.visibleTestCases.length > 0
+      ? problem.visibleTestCases.map((tc) => ({
           input: tc.input,
           output: tc.output,
           explanation: tc.explanation || ''
         }))
       : [];
 
-  const topicName = problem.topic || (Array.isArray(problem.tags) ? problem.tags[0] : problem.tags) || 'General';
+  const rawTags = Array.isArray(problem.tags) ? problem.tags : problem.tags ? [problem.tags] : [];
+  const primaryTopic = problem.topic || rawTags[0] || 'Algorithms';
+  const subtopic = problem.subtopic || (rawTags.length > 1 ? rawTags[1] : null);
+
+  const companiesList = problem.companies || ['Google', 'Meta', 'Amazon', 'Microsoft'];
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      background: '#11131a',
-      border: '1px solid #1e2230',
-      borderRadius: '12px',
-      overflow: 'hidden',
-      fontFamily: "'Syne', -apple-system, sans-serif"
-    }}>
-      {/* Tab Navigation Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 12px',
-        height: '42px',
-        background: '#0d0e14',
-        borderBottom: '1px solid #1e2230',
-        flexShrink: 0
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflowX: 'auto' }}>
+    <div className="flex flex-col h-full bg-surface text-on-surface font-body-md overflow-hidden">
+      {/* Problem Tabs Strip */}
+      <div className="flex items-center justify-between bg-surface-container-low border-b border-outline-variant/40 px-1 overflow-x-auto flex-shrink-0">
+        <div className="flex items-center">
           {[
-            { id: 'description', label: 'Description', icon: '📄' },
-            { id: 'editorial', label: 'Editorial', icon: '💡' },
-            { id: 'submissions', label: `Submissions (${submissions.length})`, icon: '⏱' },
-            { id: 'notes', label: 'Notes', icon: '📝' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: '5px 12px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.15s',
-                border: activeTab === tab.id ? '1px solid rgba(108, 142, 247, 0.3)' : '1px solid transparent',
-                background: activeTab === tab.id ? 'rgba(108, 142, 247, 0.12)' : 'transparent',
-                color: activeTab === tab.id ? '#6c8ef7' : '#888d9f'
-              }}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
+            { id: 'description', label: 'Description', icon: 'description' },
+            { id: 'editorial', label: 'Editorial', icon: 'auto_stories' },
+            { id: 'submissions', label: `Submissions (${submissions.length})`, icon: 'history' },
+            { id: 'notes', label: 'Notes', icon: 'sticky_note_2' }
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-body-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? 'bg-surface text-primary shadow-[0_-2px_0_0_#4cd7f6_inset]'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                }`}
+                type="button"
+              >
+                <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Action: Bookmark */}
         <button
           onClick={onToggleBookmark}
-          style={{
-            padding: '5px 10px',
-            borderRadius: '6px',
-            background: isBookmarked ? 'rgba(108, 142, 247, 0.15)' : '#1a1d2b',
-            border: isBookmarked ? '1px solid rgba(108, 142, 247, 0.3)' : '1px solid #2a2e42',
-            color: isBookmarked ? '#6c8ef7' : '#888d9f',
-            fontSize: '12px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}
-          title={isBookmarked ? "Remove Bookmark" : "Save Bookmark"}
+          className={`flex items-center gap-1 px-2.5 py-1 mr-1 rounded text-label-md font-semibold transition-colors cursor-pointer ${
+            isBookmarked
+              ? 'bg-primary-container/20 text-primary border border-primary/40'
+              : 'bg-surface-container text-on-surface-variant hover:text-on-surface border border-outline-variant'
+          }`}
+          title={isBookmarked ? 'Remove Bookmark' : 'Save Problem'}
+          type="button"
         >
-          <span>{isBookmarked ? '★' : '☆'}</span>
-          <span style={{ fontSize: '11px' }}>{isBookmarked ? 'Saved' : 'Save'}</span>
+          <span className="material-symbols-outlined text-[15px]">{isBookmarked ? 'bookmark' : 'bookmark_border'}</span>
+          <span className="font-label-sm">{isBookmarked ? 'Saved' : 'Save'}</span>
         </button>
       </div>
 
-      {/* Tab Body */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px', fontSize: '13px', color: '#a0a5ba', lineHeight: 1.6 }}>
+      {/* Tab Body Scroll Area */}
+      <div className="flex-1 overflow-y-auto p-5 space-y-5 text-on-surface leading-relaxed">
         {activeTab === 'description' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="space-y-5 animate-fade-in">
             {/* Header: Title, Number, Difficulty, Tags */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', color: '#555870', fontWeight: 700 }}>
-                  #{String(problem.problemNumber || 1).padStart(3, '0')}
-                </span>
-                <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#e8eaf0', letterSpacing: '-0.3px', margin: 0 }}>
-                  {problem.title}
+            <div className="space-y-2.5 pb-1 border-b border-outline-variant/30">
+              <div className="flex items-baseline justify-between flex-wrap gap-2">
+                <h1 className="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">
+                  #{String(problem.problemNumber || 1).padStart(3, '0')}. {problem.title}
                 </h1>
-                {isSolved && (
-                  <span style={{
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    background: 'rgba(34, 197, 94, 0.12)',
-                    color: '#22c55e',
-                    border: '1px solid rgba(34, 197, 94, 0.3)',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    fontFamily: "'JetBrains Mono', monospace"
-                  }}>
-                    ✓ Solved
+                <div className="flex items-center gap-2">
+                  {getDiffBadge()}
+                  {isSolved && (
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-label-sm font-semibold">
+                      ✓ Solved
+                    </span>
+                  )}
+                  <span className="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm border border-outline-variant">
+                    Rating {problem.rating || '1850'}
                   </span>
-                )}
+                </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                {getDiffBadge()}
-
-                <span style={{
-                  padding: '2px 8px',
-                  borderRadius: '5px',
-                  background: '#1a1d2b',
-                  border: '1px solid #262b3d',
-                  color: '#888d9f',
-                  fontSize: '11px',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  textTransform: 'capitalize'
-                }}>
-                  {topicName}
+              {/* Tags & Taxonomy Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="px-2.5 py-0.5 bg-surface-container-high rounded-full font-label-sm text-label-sm text-on-surface flex items-center gap-1.5 border border-outline-variant">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  {primaryTopic}
                 </span>
 
-                {problem.subtopic && (
-                  <span style={{
-                    padding: '2px 8px',
-                    borderRadius: '5px',
-                    background: 'rgba(108, 142, 247, 0.08)',
-                    border: '1px solid rgba(108, 142, 247, 0.2)',
-                    color: '#6c8ef7',
-                    fontSize: '11px',
-                    fontFamily: "'JetBrains Mono', monospace"
-                  }}>
-                    {problem.subtopic}
+                {subtopic && (
+                  <span className="px-2.5 py-0.5 bg-surface-container-high rounded-full font-label-sm text-label-sm text-on-surface flex items-center gap-1.5 border border-outline-variant">
+                    <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
+                    {subtopic}
                   </span>
                 )}
 
-                <span style={{ fontSize: '11px', color: '#555870', fontFamily: "'JetBrains Mono', monospace" }}>
-                  Acceptance: {problem.acceptance?.rate ? `${problem.acceptance.rate}%` : '52.4%'}
-                </span>
+                {rawTags.slice(2).map((t, i) => (
+                  <span
+                    key={i}
+                    className="px-2 py-0.5 bg-surface-container rounded-full font-label-sm text-label-sm text-on-surface-variant border border-outline-variant"
+                  >
+                    {t}
+                  </span>
+                ))}
               </div>
+
+              {/* Companies Tags */}
+              {companiesList && companiesList.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 font-label-sm text-label-sm text-on-surface-variant">
+                  <span className="text-outline uppercase tracking-wider font-semibold mr-1">Frequently Asked By:</span>
+                  {companiesList.map((comp, idx) => (
+                    <span key={idx} className="px-2 py-0.5 bg-surface-container rounded text-on-surface border border-outline-variant">
+                      {comp}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Description Text */}
-            <div style={{ color: '#d0d4e4', fontSize: '13.5px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+            {/* Problem Statement Body */}
+            <div className="font-body-md text-body-md text-on-surface space-y-3 whitespace-pre-wrap leading-relaxed">
               {problem.description}
             </div>
 
             {/* Examples Section */}
             {examplesList.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#555870', letterSpacing: '0.6px', fontFamily: "'JetBrains Mono', monospace" }}>
-                  Examples
+              <div className="space-y-3">
+                <div className="font-headline-sm text-headline-sm font-semibold text-on-surface flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px] text-primary">data_object</span>
+                  <span>Examples</span>
                 </div>
 
                 {examplesList.map((ex, idx) => (
                   <div
                     key={idx}
-                    style={{
-                      background: '#0d0e14',
-                      border: '1px solid #1e2230',
-                      borderRadius: '10px',
-                      padding: '14px 16px',
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: '12px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px'
-                    }}
+                    className="bg-surface-container-lowest p-3.5 rounded border border-outline-variant space-y-2 font-code-md text-code-md text-on-surface"
                   >
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#6c8ef7', textTransform: 'uppercase' }}>
-                      Example {idx + 1}:
+                    <div className="flex items-center justify-between text-outline font-label-sm">
+                      <span className="font-bold text-primary uppercase">Example {idx + 1}</span>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <span style={{ color: '#555870', width: '56px', flexShrink: 0 }}>Input:</span>
-                      <span style={{ color: '#e8eaf0', background: '#131620', padding: '2px 8px', borderRadius: '4px', border: '1px solid #202434', flex: 1, wordBreak: 'break-word' }}>
+                    <div className="space-y-1">
+                      <span className="text-outline uppercase font-label-sm block">Input</span>
+                      <pre className="p-2 bg-surface-container rounded text-secondary-fixed whitespace-pre-wrap font-code-md text-code-md border border-outline-variant/60 m-0">
                         {ex.input}
-                      </span>
+                      </pre>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <span style={{ color: '#555870', width: '56px', flexShrink: 0 }}>Output:</span>
-                      <span style={{ color: '#22c55e', background: '#131620', padding: '2px 8px', borderRadius: '4px', border: '1px solid #202434', flex: 1, wordBreak: 'break-word' }}>
+                    <div className="space-y-1">
+                      <span className="text-outline uppercase font-label-sm block">Output</span>
+                      <pre className="p-2 bg-surface-container rounded text-tertiary whitespace-pre-wrap font-code-md text-code-md border border-outline-variant/60 m-0">
                         {ex.output}
-                      </span>
+                      </pre>
                     </div>
 
                     {ex.explanation && (
-                      <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#888d9f', paddingTop: '2px' }}>
-                        <span style={{ color: '#555870', width: '56px', flexShrink: 0 }}>Explain:</span>
-                        <span>{ex.explanation}</span>
+                      <div className="pt-1 text-body-sm text-on-surface-variant">
+                        <span className="text-outline uppercase font-label-sm block mb-1">Explanation</span>
+                        <div className="text-on-surface-variant font-code-md text-[12px] pl-1 border-l-2 border-primary/40">
+                          {ex.explanation}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -307,53 +242,73 @@ export default function ProblemDescriptionPanel({
               </div>
             )}
 
-            {/* Constraints */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#555870', letterSpacing: '0.6px', fontFamily: "'JetBrains Mono', monospace" }}>
-                Constraints & Limits
+            {/* Constraints Card */}
+            <div className="bg-surface-container-low p-4 rounded border border-outline-variant space-y-2">
+              <div className="font-headline-sm text-headline-sm font-semibold text-on-surface flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-amber-400">rule</span>
+                <span>Constraints & Invariants</span>
               </div>
-              <ul style={{ margin: 0, paddingLeft: '18px', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: '#888d9f', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <ul className="list-disc pl-5 space-y-1 font-code-md text-code-md text-on-surface-variant">
                 {problem.constraints && problem.constraints.length > 0 ? (
                   problem.constraints.map((c, i) => <li key={i}>{c}</li>)
                 ) : (
                   <>
-                    <li>1 ≤ Array length / Input magnitude ≤ 10⁵</li>
-                    <li>Time Limit: 1000 ms</li>
-                    <li>Memory Limit: 256 MB</li>
+                    <li>1 ≤ Input length / Magnitude ≤ 10⁵</li>
+                    <li>Time Limit: <strong className="text-tertiary">1000 ms</strong></li>
+                    <li>Memory Limit: <strong className="text-primary">256 MB</strong></li>
                   </>
                 )}
               </ul>
             </div>
 
+            {/* Telemetry & Target Performance Envelope Meter */}
+            <div className="bg-surface-container-low p-4 rounded border border-outline-variant space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-label-md text-label-md uppercase tracking-wider text-outline">
+                  Target Benchmark Envelope
+                </span>
+                <span className="font-code-md text-code-md text-tertiary font-bold">
+                  {problem.editorial?.timeComplexity || '< 140ms / < 64MB'}
+                </span>
+              </div>
+              <svg className="w-full h-8" fill="none" viewBox="0 0 380 32">
+                <rect fill="#1d2025" height="6" rx="3" width="380" x="0" y="8" />
+                <rect fill="#06b6d4" fillOpacity="0.3" height="6" rx="3" width="280" x="0" y="8" />
+                <rect fill="#4edea3" height="6" rx="3" width="165" x="0" y="8" />
+                <circle cx="165" cy="11" fill="#4edea3" r="5" />
+                <text fill="#4edea3" fontFamily="JetBrains Mono" fontSize="9" textAnchor="middle" x="165" y="27">
+                  Target ({problem.editorial?.timeComplexity || 'O(N)'})
+                </text>
+                <text fill="#869397" fontFamily="JetBrains Mono" fontSize="9" textAnchor="middle" x="320" y="27">
+                  Naive O(N²)
+                </text>
+              </svg>
+            </div>
+
             {/* Hints Accordion */}
             {problem.hints && problem.hints.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #1e2230', paddingTop: '16px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#555870', letterSpacing: '0.6px', fontFamily: "'JetBrains Mono', monospace" }}>
-                  💡 Hints & Insights
+              <div className="space-y-2 pt-2 border-t border-outline-variant/30">
+                <div className="font-headline-sm text-headline-sm font-semibold text-on-surface flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px] text-amber-400">lightbulb</span>
+                  <span>Hints & Insights</span>
                 </div>
+
                 {problem.hints.map((hint, i) => (
-                  <div key={i} style={{ background: '#0d0e14', border: '1px solid #1e2230', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div key={i} className="bg-surface-container-low border border-outline-variant rounded overflow-hidden">
                     <button
                       onClick={() => setOpenHintIndex(openHintIndex === i ? null : i)}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        background: 'none',
-                        border: 'none',
-                        color: '#a0a5ba',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
+                      className="w-full px-3 py-2 flex items-center justify-between bg-transparent border-none text-on-surface font-body-sm font-semibold cursor-pointer hover:bg-surface-container transition-colors"
+                      type="button"
                     >
-                      <span>Hint {i + 1}</span>
-                      <span style={{ fontSize: '11px', color: '#555870' }}>{openHintIndex === i ? '▲' : '▼'}</span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-primary font-mono text-xs">Hint {i + 1}</span>
+                      </span>
+                      <span className="material-symbols-outlined text-[16px] text-outline">
+                        {openHintIndex === i ? 'expand_less' : 'expand_more'}
+                      </span>
                     </button>
                     {openHintIndex === i && (
-                      <div style={{ padding: '10px 14px', borderTop: '1px solid #181b26', fontSize: '12px', color: '#ced3e8', lineHeight: 1.5 }}>
+                      <div className="px-3.5 py-2.5 border-t border-outline-variant bg-surface-container-lowest font-body-sm text-on-surface-variant leading-relaxed">
                         {hint}
                       </div>
                     )}
@@ -366,31 +321,34 @@ export default function ProblemDescriptionPanel({
 
         {/* Tab: Editorial */}
         {activeTab === 'editorial' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ background: '#0d0e14', border: '1px solid #1e2230', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#e8eaf0', margin: 0 }}>Approach & Complexity Analysis</h3>
-                <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(108, 142, 247, 0.12)', color: '#6c8ef7', border: '1px solid rgba(108, 142, 247, 0.25)', fontFamily: "'JetBrains Mono', monospace" }}>
-                  Official Approach
+          <div className="space-y-4 animate-fade-in">
+            <div className="bg-surface-container-low border border-outline-variant rounded p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-headline-md text-headline-md font-bold text-on-surface">
+                  Approach & Complexity Analysis
+                </h3>
+                <span className="px-2 py-0.5 rounded bg-primary-container/20 text-primary border border-primary/40 font-label-sm">
+                  Official Editorial
                 </span>
               </div>
 
-              <p style={{ fontSize: '13px', color: '#d0d4e4', lineHeight: 1.6, margin: 0 }}>
-                {problem.editorial?.approach || "This problem can be efficiently solved by utilizing optimal algorithmic structures to reduce redundant operations."}
+              <p className="text-on-surface-variant leading-relaxed">
+                {problem.editorial?.approach ||
+                  'This problem can be efficiently solved by utilizing optimal algorithmic data structures to eliminate redundant computations and reduce asymptotic bounds.'}
               </p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
-                <div style={{ background: '#131620', padding: '12px', borderRadius: '8px', border: '1px solid #202434' }}>
-                  <div style={{ fontSize: '10px', color: '#555870', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>Time Complexity</div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#22c55e', marginTop: '2px', fontFamily: "'JetBrains Mono', monospace" }}>
-                    {problem.editorial?.timeComplexity || "O(n)"}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="bg-surface-container p-3 rounded border border-outline-variant">
+                  <div className="text-outline font-label-sm uppercase">Time Complexity</div>
+                  <div className="font-code-md text-sm font-bold text-tertiary mt-1">
+                    {problem.editorial?.timeComplexity || 'O(N)'}
                   </div>
                 </div>
 
-                <div style={{ background: '#131620', padding: '12px', borderRadius: '8px', border: '1px solid #202434' }}>
-                  <div style={{ fontSize: '10px', color: '#555870', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>Space Complexity</div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#6c8ef7', marginTop: '2px', fontFamily: "'JetBrains Mono', monospace" }}>
-                    {problem.editorial?.spaceComplexity || "O(1)"}
+                <div className="bg-surface-container p-3 rounded border border-outline-variant">
+                  <div className="text-outline font-label-sm uppercase">Space Complexity</div>
+                  <div className="font-code-md text-sm font-bold text-primary mt-1">
+                    {problem.editorial?.spaceComplexity || 'O(1)'}
                   </div>
                 </div>
               </div>
@@ -400,99 +358,73 @@ export default function ProblemDescriptionPanel({
 
         {/* Tab: Submissions */}
         {activeTab === 'submissions' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ fontSize: '12px', color: '#7a8099', marginBottom: '4px' }}>
-              Your past execution attempts and submissions for this problem:
+          <div className="space-y-3 animate-fade-in">
+            <div className="text-body-sm text-outline">
+              Your historical execution attempts and submissions for this problem:
             </div>
 
             {submissions.length === 0 ? (
-              <div style={{ padding: '32px', textAlign: 'center', background: '#0d0e14', borderRadius: '10px', border: '1px solid #1e2230', color: '#7a8099' }}>
-                No submissions recorded yet. Write your code and press Submit!
+              <div className="p-8 text-center bg-surface-container-low rounded border border-outline-variant text-outline font-code-md text-body-sm">
+                No past submissions found. Write your solution and press Submit!
               </div>
             ) : (
-              submissions.map((sub, idx) => (
-                <div
-                  key={sub._id || idx}
-                  onClick={() => onSelectSubmission(sub)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 14px',
-                    background: '#0d0e14',
-                    border: '1px solid #1e2230',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'border-color 0.15s'
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#2e334a')}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2230')}
-                >
-                  <div>
-                    <span style={{
-                      fontWeight: 700,
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: '12px',
-                      color: sub.status?.toLowerCase().includes('accepted') ? '#22c55e' : '#ef4444'
-                    }}>
-                      {sub.status || 'Submitted'}
-                    </span>
-                    <div style={{ fontSize: '11px', color: '#555870', marginTop: '2px' }}>
-                      {sub.language?.toUpperCase()} • {sub.runtime ? `${sub.runtime}ms` : '—'}
+              submissions.map((sub, idx) => {
+                const isAcc = String(sub.status).toLowerCase().includes('accepted');
+                return (
+                  <div
+                    key={sub._id || idx}
+                    onClick={() => onSelectSubmission(sub)}
+                    className="flex items-center justify-between p-3 bg-surface-container-low border border-outline-variant hover:border-primary/50 rounded cursor-pointer transition-all hover:bg-surface-container"
+                  >
+                    <div className="space-y-0.5">
+                      <div className={`font-mono text-xs font-bold ${isAcc ? 'text-tertiary' : 'text-error'}`}>
+                        {sub.status || (isAcc ? 'Accepted' : 'Wrong Answer')}
+                      </div>
+                      <div className="text-outline font-label-sm">
+                        {sub.language?.toUpperCase()} • {sub.runtime ? `${sub.runtime}ms` : '—'} •{' '}
+                        {new Date(sub.createdAt || Date.now()).toLocaleDateString()}
+                      </div>
                     </div>
-                  </div>
 
-                  <span style={{ color: '#6c8ef7', fontSize: '12px', fontWeight: 600 }}>View Code →</span>
-                </div>
-              ))
+                    <span className="text-primary font-label-sm font-semibold flex items-center gap-1">
+                      <span>View Code</span>
+                      <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    </span>
+                  </div>
+                );
+              })
             )}
           </div>
         )}
 
         {/* Tab: Notes */}
         {activeTab === 'notes' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
-            <div style={{ fontSize: '12px', color: '#7a8099' }}>
-              Personal notes and takeaways (saved to your account):
+          <div className="space-y-3 h-full flex flex-col animate-fade-in">
+            <div className="text-body-sm text-outline">
+              Personal reflections, invariants, and edge cases saved to your account:
             </div>
 
             <textarea
               value={noteContent}
               onChange={(e) => setNoteContent(e.target.value)}
-              placeholder="Record your thoughts, edge cases, or intuition here..."
-              style={{
-                width: '100%',
-                flex: 1,
-                minHeight: '200px',
-                background: '#0d0e14',
-                border: '1px solid #1e2230',
-                borderRadius: '8px',
-                padding: '12px',
-                color: '#e8eaf0',
-                fontSize: '13px',
-                fontFamily: "'Syne', sans-serif",
-                outline: 'none',
-                resize: 'none'
-              }}
+              placeholder="Record your thoughts, step-by-step logic, or edge cases here..."
+              className="w-full flex-1 min-h-[220px] bg-surface-container-lowest border border-outline-variant focus:border-primary rounded p-3 text-on-surface font-body-md outline-none resize-none transition-colors"
             />
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="flex items-center justify-between pt-1">
               <button
                 onClick={handleSaveNote}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  background: '#6c8ef7',
-                  color: '#fff',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
+                className="btn-primary"
+                type="button"
               >
                 Save Notes
               </button>
-              {noteSaved && <span style={{ color: '#22c55e', fontSize: '12px', fontWeight: 600 }}>✓ Notes Saved</span>}
+              {noteSaved && (
+                <span className="text-tertiary font-label-sm font-bold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[15px]">check_circle</span>
+                  <span>Notes Saved to Cloud</span>
+                </span>
+              )}
             </div>
           </div>
         )}

@@ -45,6 +45,13 @@ export const MONACO_LANG_MAP = {
   js: 'javascript'
 };
 
+const FILE_NAME_MAP = {
+  cpp: 'solution.cpp',
+  java: 'Solution.java',
+  python: 'solution.py',
+  javascript: 'solution.js'
+};
+
 export default function CodeEditor({
   problemId,
   language = 'cpp',
@@ -66,36 +73,38 @@ export default function CodeEditor({
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
 
   const monacoLang = MONACO_LANG_MAP[language] || 'cpp';
+  const fileName = FILE_NAME_MAP[language] || 'solution.cpp';
 
   // Handle editor mounting & register custom shortcuts
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
 
-    // Custom dark theme
-    monaco.editor.defineTheme('codeblaze-dark', {
+    // Stitch Terminal Precision dark theme
+    monaco.editor.defineTheme('codeblaze-stitch-dark', {
       base: 'vs-dark',
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '5e6480', fontStyle: 'italic' },
-        { token: 'keyword', foreground: 'c084fc', fontStyle: 'bold' },
+        { token: 'comment', foreground: '869397', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'd0bcff', fontStyle: 'bold' },
         { token: 'number', foreground: 'f59e0b' },
-        { token: 'string', foreground: '34d399' },
-        { token: 'type', foreground: '60a5fa' },
-        { token: 'identifier', foreground: 'f1f3f9' }
+        { token: 'string', foreground: '4edea3' },
+        { token: 'type', foreground: '4cd7f6' },
+        { token: 'identifier', foreground: 'e1e2ea' },
+        { token: 'delimiter', foreground: 'bcc9cd' }
       ],
       colors: {
-        'editor.background': '#0a0b0e',
-        'editor.foreground': '#e8eaf0',
-        'editorCursor.foreground': '#6c8ef7',
-        'editor.lineHighlightBackground': '#131620',
-        'editorLineNumber.foreground': '#3a3f58',
-        'editorLineNumber.activeForeground': '#6c8ef7',
-        'editor.selectionBackground': '#263359',
-        'editor.inactiveSelectionBackground': '#182038'
+        'editor.background': '#0b0e13',
+        'editor.foreground': '#e1e2ea',
+        'editorCursor.foreground': '#4cd7f6',
+        'editor.lineHighlightBackground': '#161d2a',
+        'editorLineNumber.foreground': '#3d494c',
+        'editorLineNumber.activeForeground': '#4cd7f6',
+        'editor.selectionBackground': '#00424f',
+        'editor.inactiveSelectionBackground': '#191c21'
       }
     });
 
-    monaco.editor.setTheme('codeblaze-dark');
+    monaco.editor.setTheme('codeblaze-stitch-dark');
 
     // Run Code: Cmd/Ctrl + Enter
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
@@ -117,7 +126,7 @@ export default function CodeEditor({
     if (savedDraft && savedDraft.trim() !== code.trim() && !hasRestoredDraft) {
       setDraftAlert({
         draftCode: savedDraft,
-        text: "You have a saved local draft for this problem."
+        text: 'A saved local draft exists for this problem.'
       });
     }
   }, [problemId, language]);
@@ -136,7 +145,7 @@ export default function CodeEditor({
   };
 
   const handleResetCode = () => {
-    if (window.confirm("Reset editor to default starter template? Current changes will be overwritten.")) {
+    if (window.confirm('Reset editor to default starter template? Unsaved changes will be replaced.')) {
       const template = STARTER_TEMPLATES[monacoLang] || STARTER_TEMPLATES.cpp;
       onChange(template);
       if (problemId) {
@@ -162,88 +171,26 @@ export default function CodeEditor({
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      background: '#11131a',
-      border: '1px solid #1e2230',
-      borderRadius: '12px',
-      overflow: 'hidden',
-      fontFamily: "'Syne', -apple-system, sans-serif"
-    }}>
-      {/* Unified Editor Top Bar */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 12px',
-        height: '42px',
-        background: '#0d0e14',
-        borderBottom: '1px solid #1e2230',
-        flexShrink: 0,
-        gap: '8px'
-      }}>
-        {/* Left: Language selector & tools */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <select
-            value={language}
-            onChange={(e) => onLanguageChange(e.target.value)}
-            style={{
-              background: '#1a1d2b',
-              color: '#e8eaf0',
-              border: '1px solid #2a2e42',
-              borderRadius: '6px',
-              padding: '5px 10px',
-              fontSize: '12px',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontWeight: 600,
-              cursor: 'pointer',
-              outline: 'none'
-            }}
-          >
-            <option value="cpp">C++ (GCC)</option>
-            <option value="java">Java (OpenJDK)</option>
-            <option value="python">Python 3</option>
-            <option value="javascript">JavaScript (Node)</option>
-          </select>
+    <div className="flex flex-col h-full bg-surface-container-lowest overflow-hidden font-body-md">
+      {/* Editor Top Bar & Controls */}
+      <div className="flex items-center justify-between bg-surface-container-low px-2 py-1 border-b border-outline-variant/40 flex-shrink-0">
+        {/* Left: Active File Tab */}
+        <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-surface-container-lowest text-on-surface font-code-md text-code-md rounded-t shadow-[0_-2px_0_0_#4cd7f6_inset]">
+            <span className="material-symbols-outlined text-[15px] text-amber-400">code</span>
+            <span>{fileName}</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse ml-1" title="Active Solution Buffer" />
+          </div>
+        </div>
 
-          {/* Format */}
-          <button
-            onClick={handleFormatCode}
-            style={{
-              background: '#1a1d2b',
-              border: '1px solid #2a2e42',
-              borderRadius: '6px',
-              padding: '5px 8px',
-              color: '#888d9f',
-              fontSize: '11px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-            title="Format Document (Shift + Option + F)"
-          >
-            Format
-          </button>
-
-          {/* Font size */}
+        {/* Right: Editor Toolbar Actions */}
+        <div className="flex items-center gap-1.5 text-on-surface-variant font-label-sm text-label-sm">
+          {/* Font Size */}
           <select
             value={fontSize}
             onChange={(e) => setFontSize(Number(e.target.value))}
-            style={{
-              background: '#1a1d2b',
-              color: '#888d9f',
-              border: '1px solid #2a2e42',
-              borderRadius: '6px',
-              padding: '4px 6px',
-              fontSize: '11px',
-              fontFamily: "'JetBrains Mono', monospace",
-              cursor: 'pointer',
-              outline: 'none'
-            }}
-            title="Font Size"
+            className="bg-surface-container hover:bg-surface-container-high text-outline hover:text-on-surface border border-outline-variant rounded px-1.5 py-0.5 text-[11px] font-mono cursor-pointer outline-none"
+            title="Editor Font Size"
           >
             <option value={12}>12px</option>
             <option value={13}>13px</option>
@@ -251,172 +198,71 @@ export default function CodeEditor({
             <option value={16}>16px</option>
           </select>
 
-          {/* Minimap */}
+          {/* Format Code */}
+          <button
+            onClick={handleFormatCode}
+            className="p-1 hover:text-on-surface hover:bg-surface-container rounded transition-colors cursor-pointer"
+            title="Format Code (Prettier)"
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[16px]">align_horizontal_left</span>
+          </button>
+
+          {/* Reset Starter Code */}
+          <button
+            onClick={handleResetCode}
+            className="p-1 hover:text-error hover:bg-surface-container rounded transition-colors cursor-pointer"
+            title="Reset to Starter Template"
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+          </button>
+
+          {/* Minimap Toggle */}
           <button
             onClick={() => setMinimap(!minimap)}
-            style={{
-              background: minimap ? 'rgba(108, 142, 247, 0.2)' : '#1a1d2b',
-              border: minimap ? '1px solid #6c8ef7' : '1px solid #2a2e42',
-              borderRadius: '6px',
-              padding: '4px 8px',
-              color: minimap ? '#6c8ef7' : '#888d9f',
-              fontSize: '11px',
-              cursor: 'pointer',
-              fontFamily: "'JetBrains Mono', monospace"
-            }}
+            className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer border ${
+              minimap
+                ? 'bg-primary-container/20 text-primary border-primary/40'
+                : 'bg-surface-container hover:bg-surface-container-high text-outline border-outline-variant'
+            }`}
             title="Toggle Minimap"
+            type="button"
           >
             Map
           </button>
 
-          {/* Copy */}
+          {/* Copy Code */}
           <button
             onClick={handleCopyCode}
-            style={{
-              background: '#1a1d2b',
-              border: '1px solid #2a2e42',
-              borderRadius: '6px',
-              padding: '4px 8px',
-              color: copied ? '#22c55e' : '#888d9f',
-              fontSize: '11px',
-              cursor: 'pointer'
-            }}
-            title="Copy Code"
+            className="p-1 hover:text-tertiary hover:bg-surface-container rounded transition-colors cursor-pointer"
+            title="Copy Solution Code"
+            type="button"
           >
-            {copied ? '✓' : 'Copy'}
-          </button>
-
-          {/* Reset */}
-          <button
-            onClick={handleResetCode}
-            style={{
-              background: 'none',
-              border: '1px solid #2a2e42',
-              borderRadius: '6px',
-              padding: '4px 8px',
-              color: '#f87171',
-              fontSize: '11px',
-              cursor: 'pointer'
-            }}
-            title="Reset code to default template"
-          >
-            Reset
-          </button>
-        </div>
-
-        {/* Right: AI Mentor, Run, Submit */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={onToggleAI}
-            style={{
-              padding: '5px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              border: aiMentorOpen ? '1px solid #a855f7' : '1px solid rgba(168, 85, 247, 0.3)',
-              background: aiMentorOpen ? 'rgba(168, 85, 247, 0.2)' : 'rgba(168, 85, 247, 0.1)',
-              color: '#c084fc',
-              transition: 'all 0.15s'
-            }}
-            title="Toggle In-Workspace AI Mentor"
-          >
-            <span>✨</span>
-            <span>AI Mentor</span>
-          </button>
-
-          <button
-            onClick={onRun}
-            disabled={isExecuting}
-            style={{
-              padding: '5px 14px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 700,
-              cursor: isExecuting ? 'not-allowed' : 'pointer',
-              background: '#1a1d2b',
-              border: '1px solid #2a2e42',
-              color: '#e8eaf0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              opacity: isExecuting ? 0.6 : 1
-            }}
-            title="Run Code (Cmd/Ctrl + Enter)"
-          >
-            <span>▶</span>
-            <span>Run</span>
-          </button>
-
-          <button
-            onClick={onSubmit}
-            disabled={isExecuting}
-            style={{
-              padding: '5px 16px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 700,
-              cursor: isExecuting ? 'not-allowed' : 'pointer',
-              background: '#6c8ef7',
-              border: 'none',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 2px 10px rgba(108, 142, 247, 0.3)',
-              opacity: isExecuting ? 0.6 : 1
-            }}
-            title="Submit Solution (Cmd/Ctrl + Shift + Enter)"
-          >
-            <span>🚀</span>
-            <span>Submit</span>
+            <span className="material-symbols-outlined text-[16px]">{copied ? 'done' : 'content_copy'}</span>
           </button>
         </div>
       </div>
 
       {/* Draft Alert Banner */}
       {draftAlert && (
-        <div style={{
-          background: 'rgba(245, 158, 11, 0.15)',
-          borderBottom: '1px solid rgba(245, 158, 11, 0.3)',
-          padding: '8px 14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: '12px',
-          color: '#fcd34d'
-        }}>
-          <span>💾 {draftAlert.text}</span>
-          <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="bg-amber-500/10 border-b border-amber-500/30 px-3 py-1.5 flex items-center justify-between font-label-sm text-amber-300">
+          <span className="flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-[15px]">save</span>
+            <span>{draftAlert.text}</span>
+          </span>
+          <div className="flex items-center gap-1.5">
             <button
               onClick={handleApplyDraft}
-              style={{
-                padding: '3px 10px',
-                borderRadius: '4px',
-                background: '#f59e0b',
-                color: '#000',
-                fontSize: '11px',
-                fontWeight: 700,
-                border: 'none',
-                cursor: 'pointer'
-              }}
+              className="px-2 py-0.5 rounded bg-amber-500 text-black font-bold font-mono text-[10px] cursor-pointer border-none"
+              type="button"
             >
               Restore Draft
             </button>
             <button
               onClick={handleDismissDraft}
-              style={{
-                padding: '3px 8px',
-                borderRadius: '4px',
-                background: 'rgba(255, 255, 255, 0.1)',
-                color: '#e8eaf0',
-                fontSize: '11px',
-                border: 'none',
-                cursor: 'pointer'
-              }}
+              className="px-2 py-0.5 rounded bg-surface-container text-on-surface font-mono text-[10px] cursor-pointer border border-outline-variant"
+              type="button"
             >
               Dismiss
             </button>
@@ -425,12 +271,12 @@ export default function CodeEditor({
       )}
 
       {/* Monaco Container */}
-      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+      <div className="flex-1 overflow-hidden relative">
         <Editor
           height="100%"
           language={monacoLang}
           value={code}
-          theme="codeblaze-dark"
+          theme="codeblaze-stitch-dark"
           onChange={(value) => {
             const nextVal = value || '';
             onChange(nextVal);
@@ -442,7 +288,7 @@ export default function CodeEditor({
           options={{
             readOnly,
             fontSize,
-            fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, monospace",
+            fontFamily: "'JetBrains Mono', monospace",
             fontLigatures: true,
             tabSize: 4,
             minimap: { enabled: minimap },
@@ -455,7 +301,7 @@ export default function CodeEditor({
             smoothScrolling: true,
             bracketPairColorization: { enabled: true },
             wordWrap: 'on',
-            padding: { top: 12, bottom: 12 }
+            padding: { top: 8, bottom: 8 }
           }}
         />
       </div>

@@ -74,12 +74,12 @@ export default function ResizableSplitPane({
         onMouseDown={handleMouseDown}
         className={`${
           direction === 'horizontal'
-            ? 'w-1.5 cursor-col-resize hover:bg-indigo-500/50 active:bg-indigo-500'
-            : 'h-1.5 cursor-row-resize hover:bg-indigo-500/50 active:bg-indigo-500'
-        } bg-[#1c202e] transition-colors flex-shrink-0 relative group z-10`}
+            ? 'w-[3px] hover:w-[5px] cursor-col-resize hover:bg-[#06b6d4] active:bg-[#4cd7f6]'
+            : 'h-[3px] hover:h-[5px] cursor-row-resize hover:bg-[#06b6d4] active:bg-[#4cd7f6]'
+        } bg-[#232d3f] transition-all flex-shrink-0 relative group z-10`}
       >
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className={`${direction === 'horizontal' ? 'w-0.5 h-6' : 'h-0.5 w-6'} bg-[#454b66] rounded-full group-hover:bg-indigo-400`} />
+          <div className={`${direction === 'horizontal' ? 'w-[1px] h-6' : 'h-[1px] w-6'} bg-[#3d494c] group-hover:bg-[#06b6d4]`} />
         </div>
       </div>
 
